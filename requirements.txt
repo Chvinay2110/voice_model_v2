@@ -1,0 +1,17 @@
+# Web & API Framework
+Flask>=3.0.0
+Werkzeug>=3.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Audio Processing & Scientific Computing
+numpy>=1.24.0
+scipy>=1.11.0
+soundfile>=0.12.0
+torchaudio>=2.1.0
+
+# Neural Deep Learning & ECAPA-TDNN Model
+torch>=2.1.0
+speechbrain>=1.0.0
+huggingface_hub>=0.20.0
+HyperPyYAML>=1.2.0

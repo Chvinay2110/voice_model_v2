@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Transcript</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1a202c;
+      --muted: #718096;
+      --accent: #4f46e5;
+      --rec: #ef4444;
+      --radius: 14px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 4px 16px rgba(0, 0, 0, .04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* ── HOME PAGE ── */
+    #home-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .home-card {
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .04);
+      padding: 36px 40px;
+      width: 380px;
+      max-width: 92vw;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .home-card h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    #startBtn {
+      width: 100%;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s, opacity .15s;
+    }
+
+    #startBtn:hover {
+      opacity: .92;
+    }
+
+    /* ── APP PAGE ── */
+    #app-page {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .rec-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .rec-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #cbd5e0;
+      transition: background .2s;
+    }
+
+    .rec-dot.on {
+      background: var(--rec);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: .45;
+      }
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 7px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      transition: background .12s, color .12s, border-color .12s;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: var(--bg);
+    }
+
+    .btn-danger {
+      border-color: #fca5a5;
+      color: var(--rec);
+      background: #fff5f5;
+    }
+
+    .btn-danger:hover {
+      background: #fee2e2;
+    }
+
+    .lang-btn {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    .lang-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .filter-badge {
+      background: #e2e8f0;
+      color: var(--text);
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 11px;
+      margin-left: 4px;
+      font-weight: 700;
+    }
+
+    .lang-btn.active .filter-badge {
+      background: rgba(255, 255, 255, 0.28);
+      color: #fff;
+    }
+
+    #resumeBtn {
+      display: none;
+    }
+
+    /* ── MAIN BODY two-column layout ── */
+    .main-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── LEFT: transcript ── */
+    .transcript-col {
+      flex: 65;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #speakerContainer2 {
+      /* renamed via wrapper */
+      flex: 1;
+      padding: 24px 20px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    #interimBar {
+      min-height: 36px;
+      padding: 0 20px 12px;
+    }
+
+    /* ── RIGHT: stats panel ── */
+    .stats-col {
+      flex: 35;
+      min-width: 260px;
+      max-width: 420px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .stats-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .stats-section+.stats-section {
+      border-top: 1px solid var(--border);
+    }
+
+    .stats-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      padding: 14px 18px 10px;
+    }
+
+    /* ── Speaking time graph container ── */
+    .chart-container {
+      flex: 1;
+      position: relative;
+      padding: 10px 14px 14px;
+      min-height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Pure Typographic Word Cloud ── */
+    #wordcloudPane {
+      flex: 1;
+      padding: 18px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      align-content: center;
+      gap: 8px 16px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .wc-typography-word {
+      display: inline-block;
+      font-weight: 700;
+      line-height: 1.15;
+      cursor: default;
+      transition: transform .2s cubic-bezier(.34, 1.56, .64, 1), filter .2s ease;
+      user-select: none;
+      white-space: nowrap;
+      letter-spacing: -0.3px;
+    }
+
+    .wc-typography-word:hover {
+      transform: scale(1.18);
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, .15));
+      z-index: 10;
+    }
+
+    .topic-cloud-empty {
+      margin: auto;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── AI ANALYSIS SIDEBAR (VS Code style) ── */
+    #aiSidebar {
+      position: fixed;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 45vw;
+      min-width: 320px;
+      z-index: 400;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid #313244;
+      transform: translateX(100%);
+      transition: transform .28s cubic-bezier(.4, 0, .2, 1);
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    #aiSidebar.open {
+      transform: translateX(0);
+    }
+
+    /* push main content right-margin when sidebar is open */
+    #app-page.sidebar-open .main-body {
+      padding-right: 45vw;
+      transition: padding-right .28s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .sb-header {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid #313244;
+      gap: 10px;
+      background: #181825;
+    }
+
+    .sb-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #cba6f7;
+      flex: 1;
+      letter-spacing: .3px;
+    }
+
+    .sb-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #6c7086;
+      font-size: 20px;
+      line-height: 1;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .sb-close:hover {
+      background: #313244;
+      color: #cdd6f4;
+    }
+
+    .sb-settings {
+      padding: 12px 16px;
+      border-bottom: 1px solid #313244;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #181825;
+    }
+
+    .sb-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .sb-label {
+      font-size: 11px;
+      color: #6c7086;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      white-space: nowrap;
+    }
+
+    .sb-select,
+    .sb-input {
+      flex: 1;
+      background: #313244;
+      border: 1px solid #45475a;
+      color: #cdd6f4;
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .sb-select:focus,
+    .sb-input:focus {
+      border-color: #cba6f7;
+    }
+
+    .sb-btn {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      border: none;
+      white-space: nowrap;
+    }
+
+    .sb-btn-primary {
+      background: #cba6f7;
+      color: #1e1e2e;
+    }
+
+    .sb-btn-primary:hover {
+      background: #d4b2fa;
+    }
+
+    .sb-btn-ghost {
+      background: #313244;
+      color: #cdd6f4;
+    }
+
+    .sb-btn-ghost:hover {
+      background: #45475a;
+    }
+
+    .sb-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scrollbar-width: thin;
+      scrollbar-color: #45475a transparent;
+    }
+
+    .sb-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sb-body::-webkit-scrollbar-thumb {
+      background: #45475a;
+      border-radius: 4px;
+    }
+
+    .sb-empty {
+      text-align: center;
+      color: #6c7086;
+      font-size: 13px;
+      margin: auto;
+      line-height: 1.8;
+      padding: 20px;
+    }
+
+    .sb-empty .sb-empty-icon {
+      font-size: 32px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .analysis-card {
+      background: #181825;
+      border: 1px solid #313244;
+      border-radius: 10px;
+      overflow: hidden;
+      animation: sbFadeIn .2s ease;
+    }
+
+    @keyframes sbFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .analysis-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid #313244;
+      background: #11111b;
+    }
+
+    .analysis-card-model {
+      font-size: 11px;
+      font-weight: 600;
+      color: #cba6f7;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .analysis-card-time {
+      font-size: 11px;
+      color: #6c7086;
+    }
+
+    .analysis-card-body {
+      padding: 12px 14px;
+      font-size: 13.5px;
+      line-height: 1.7;
+      color: #cdd6f4;
+      white-space: pre-wrap;
+    }
+
+    .analysis-card.loading .analysis-card-body {
+      color: #6c7086;
+      font-style: italic;
+    }
+
+    .sb-footer {
+      padding: 12px 16px;
+      border-top: 1px solid #313244;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #181825;
+    }
+
+    .sb-auto-label {
+      font-size: 12px;
+      color: #6c7086;
+      flex: 1;
+    }
+
+    /* ── SPEAKER CONTAINER (inside .transcript-col) ── */
+    #speakerContainer {
+      flex: 1;
+      min-height: 0;
+      padding: 24px 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    #speakerContainer::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #speakerContainer::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    /* Interim bar */
+    #interimBar {
+      min-height: 36px;
+      padding: 0 20px 12px;
+      flex-shrink: 0;
+    }
+
+    .interim-text {
+      font-size: 15px;
+      color: var(--muted);
+      font-style: italic;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, .6);
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      line-height: 1.6;
+    }
+
+    /* ── SPEAKER BOX ── */
+    .speaker-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      max-height: 300px;
+      animation: slideIn .25s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .speaker-box-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+      background: #fafafa;
+      flex-shrink: 0;
+    }
+
+    .spk-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .spk-avatar-img {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .spk-name {
+      font-size: 14px;
+      font-weight: 600;
+      flex: 1;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 2px 6px;
+      margin-left: -6px;
+      transition: background .12s;
+    }
+
+    .spk-name:hover {
+      background: var(--bg);
+    }
+
+    .spk-name[contenteditable="true"] {
+      outline: none;
+      background: var(--bg);
+    }
+
+    .speaker-box-body {
+      padding: 14px 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      min-height: 80px;
+      max-height: 240px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      scroll-padding-bottom: 16px;
+      /* custom thin scrollbar */
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .speaker-box-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .speaker-box-body::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .speaker-box-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    /* ── TURN LINES ── */
+    .turn-line {
+      font-size: 15.5px;
+      line-height: 1.75;
+      color: var(--text);
+      padding: 4px 0;
+      margin-bottom: 2px;
+      animation: fadeIn .18s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .turn-line.interim {
+      color: var(--muted);
+    }
+
+    .turn-line.interim::after {
+      content: '▋';
+      animation: blink .8s step-end infinite;
+      margin-left: 2px;
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0;
+      }
+    }
+
+    /* empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .empty-state .icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 10px 24px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── HOME PAGE ── -->
+  <div id="home-page">
+    <div class="home-card">
+      <h1>DEEBUG Live Transcribe</h1>
+      <button id="startBtn">Start Recording</button>
+    </div>
+  </div>
+
+  <!-- ── APP PAGE ── -->
+  <div id="app-page">
+    <header>
+      <span class="header-title">DEEBUG</span>
+      <button class="btn lang-btn" id="btnEnglish">English</button>
+      <button class="btn lang-btn" id="btnHindi">Hindi</button>
+      <button class="btn lang-btn" id="btnFilterPending">Pending <span class="filter-badge" id="pendingCountBadge">0</span></button>
+      <div class="header-actions">
+        <button class="btn" id="downloadBtn">⬇ Download</button>
+        <button class="btn btn-danger" id="stopBtn">Stop</button>
+        <button class="btn" id="resumeBtn">Resume</button>
+        <button class="btn" id="aiAnalysisBtn">AI Analysis</button>
+      </div>
+    </header>
+
+    <div class="main-body">
+      <!-- LEFT: transcript -->
+      <div class="transcript-col">
+        <div id="speakerContainer">
+          <div class="empty-state" id="emptyState">
+            <div class="icon">🎙</div>
+            Listening for speech…<br>
+            Speaker boxes will appear here as people are detected.
+          </div>
+        </div>
+        <div id="interimBar"></div>
+      </div>
+
+      <!-- RIGHT: stats panel -->
+      <div class="stats-col">
+        <!-- Speaking time graph -->
+        <div class="stats-section">
+          <div class="stats-title">Speaking Time Distribution</div>
+          <div class="chart-container">
+            <canvas id="speakingChartCanvas"></canvas>
+          </div>
+        </div>
+        <!-- Fundamental Discussion Topics -->
+        <div class="stats-section">
+          <div class="stats-title">Discussion Topics</div>
+          <div id="wordcloudPane">
+            <div class="topic-cloud-empty">Discussion topics will appear here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── AI ANALYSIS SIDEBAR ── -->
+  <div id="aiSidebar">
+    <div class="sb-header">
+      <span class="sb-title">✨ AI Analysis</span>
+      <button class="sb-close" id="sbClose">×</button>
+    </div>
+
+    <div class="sb-body" id="sbBody">
+      <div class="sb-empty">
+        <span class="sb-empty-icon">🧠</span>
+        Click <strong>Analyse Now</strong> to get AI insights on the live transcript.
+      </div>
+    </div>
+    <div class="sb-footer">
+      <button class="sb-btn sb-btn-primary" id="sbAnalyseNow">Analyse Now</button>
+      <span class="sb-auto-label" id="sbAutoLabel"></span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // ── Mute console outputs ──────────────────────────────────────────────
+      console.log = function () { };
+      console.info = function () { };
+      console.debug = function () { };
+      console.warn = function () { };
+      console.error = function () { };
+
+      // ── Elements ──────────────────────────────────────────────────────────
+      const homePage = document.getElementById('home-page');
+      const appPage = document.getElementById('app-page');
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const resumeBtn = document.getElementById('resumeBtn');
+      const speakerContainer = document.getElementById('speakerContainer');
+      const emptyState = document.getElementById('emptyState');
+      const interimBar = document.getElementById('interimBar');
+      const btnEnglish = document.getElementById('btnEnglish');
+      const btnHindi = document.getElementById('btnHindi');
+
+      function setStatus(msg) { /* status removed from header */ }
+
+      // ── Speaker colours ───────────────────────────────────────────────────
+      const SPEAKER_COLORS = [
+        '#4f46e5', // Indigo
+        '#ea580c', // Orange
+        '#16a34a', // Green
+        '#9333ea', // Purple
+        '#0284c7', // Sky blue
+        '#e11d48', // Rose
+        '#ca8a04', // Yellow-gold
+        '#0d9488', // Teal
+      ];
+      let speakerColorIndex = 0;
+      const speakerColorMap = {};
+      function getSpeakerColor(speakerId) {
+        if (speakerId === '?') return '#64748b'; // Slate grey for unknown
+        if (!speakerColorMap[speakerId]) {
+          speakerColorMap[speakerId] = SPEAKER_COLORS[speakerColorIndex % SPEAKER_COLORS.length];
+          speakerColorIndex++;
+        }
+        return speakerColorMap[speakerId];
+      }
+
+      function speakerName(speakerId) {
+        if (!speakerId || speakerId === '?') return 'Speaker A';
+        const box = speakerBoxes[speakerId];
+        return box ? box.name : `Speaker ${speakerId}`;
+      }
+
+      // ── State ─────────────────────────────────────────────────────────────
+      // speakerBoxes[id] = { boxEl, bodyEl, color, name, turns:[] }
+      const speakerBoxes = {};
+      // activeTurns[turnOrder] = { turnEl, speakerId }
+      const activeTurns = {};
+      // finalizedTurns[turnOrder] = { turnEl, speakerId, text, duration }
+      const finalizedTurns = {};
+      // rawLines for download
+      const rawLines = [];  // {time, text, speakerId}
+      // interim element reuse
+      let interimEl = null;
+
+      // ── View mode (original | en | hi) ────────────────────────────────────
+      let viewMode = 'original'; // 'original' | 'en' | 'hi'
+
+      // ── Speaking Time Chart.js ───────────────────────────────────────────
+      let chartInstance = null;
+      function initSpeakingChart() {
+        if (chartInstance) return;
+        const canvas = document.getElementById('speakingChartCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: [],
+            datasets: [{
+              label: 'Speaking Share (%)',
+              data: [],
+              backgroundColor: [],
+              borderRadius: 6,
+              barThickness: 24,
+              maxBarThickness: 32
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 350 },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    return ` ${context.raw}% speaking share`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                  callback: function (val) { return val + '%'; },
+                  font: { family: 'Inter', size: 11 },
+                  color: '#64748b',
+                  stepSize: 25
+                },
+                grid: { color: '#e2e8f0' }
+              },
+              x: {
+                ticks: {
+                  font: { family: 'Inter', size: 12, weight: '600' },
+                  color: '#1e293b'
+                },
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+
+      function recalculateSpeakingChart(fTurns) {
+        initSpeakingChart();
+        if (!chartInstance) return;
+
+        const spkDurations = {};
+        for (const turn of Object.values(fTurns)) {
+          if (!turn || !turn.speakerId) continue;
+          const sid = String(turn.speakerId).trim().toUpperCase();
+          if (sid === '?' || sid === 'PENDING' || sid.startsWith('PENDING')) continue;
+          const sName = speakerName(turn.speakerId).trim().toLowerCase();
+          if (sName === 'pending' || sName.includes('pending') || sName.includes('?')) continue;
+          spkDurations[turn.speakerId] = (spkDurations[turn.speakerId] || 0) + (turn.duration || 1);
+        }
+
+        const speakerIds = Object.keys(spkDurations);
+        if (speakerIds.length === 0) {
+          chartInstance.data.labels = [];
+          chartInstance.data.datasets[0].data = [];
+          chartInstance.data.datasets[0].backgroundColor = [];
+          chartInstance.update();
+          return;
+        }
+
+        const totalDur = speakerIds.reduce((sum, sid) => sum + spkDurations[sid], 0) || 1;
+
+        // Sort by duration descending
+        speakerIds.sort((a, b) => spkDurations[b] - spkDurations[a]);
+
+        const labels = speakerIds.map(sid => speakerName(sid));
+        const data = speakerIds.map(sid => Math.round((spkDurations[sid] / totalDur) * 100));
+        const colors = speakerIds.map(sid => (speakerBoxes[sid] ? speakerBoxes[sid].color : getSpeakerColor(sid)));
+
+        chartInstance.data.labels = labels;
+        chartInstance.data.datasets[0].data = data;
+        chartInstance.data.datasets[0].backgroundColor = colors;
+        chartInstance.update();
+      }
+
+      async function googleTranslate(text, targetLang) {
+        try {
+          const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+          const resp = await fetch(url);
+          if (!resp.ok) return null;
+          const data = await resp.json();
+          return (data[0] || []).map(s => s[0]).join('') || null;
+        } catch (e) { return null; }
+      }
+
+      // Called after a turn finalises — computes EN + HI translations in background.
+      async function computeTranslations(turnEl, originalText) {
+        turnEl.dataset.original = originalText;
+        // kick off both in parallel
+        const [en, hi] = await Promise.all([
+          googleTranslate(originalText, 'en'),
+          googleTranslate(originalText, 'hi')
+        ]);
+        if (en) turnEl.dataset.en = en;
+        if (hi) turnEl.dataset.hi = hi;
+        // if a language mode is already active, update this turn immediately
+        if (viewMode === 'en' && en) turnEl.textContent = en;
+        else if (viewMode === 'hi' && hi) turnEl.textContent = hi;
+      }
+
+      // Re-renders every finalized turn line for the current viewMode.
+      function applyViewMode() {
+        document.querySelectorAll('.turn-line:not(.interim)').forEach(el => {
+          const orig = el.dataset.original;
+          if (!orig) return; // not yet stored
+          if (viewMode === 'en') el.textContent = el.dataset.en || orig;
+          else if (viewMode === 'hi') el.textContent = el.dataset.hi || orig;
+          else el.textContent = orig;
+        });
+      }
+
+      // ── Speaker box management ────────────────────────────────────────────
+      function getOrCreateSpeakerBox(speakerId) {
+        if (speakerBoxes[speakerId]) return speakerBoxes[speakerId];
+        // hide empty state
+        if (emptyState) emptyState.remove();
+
+        const idx = Object.keys(speakerBoxes).length;
+        const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
+        const name = 'Speaker ' + speakerId;
+
+        const box = document.createElement('div');
+        box.className = 'speaker-box';
+        box.dataset.speaker = speakerId;
+        box.innerHTML = `
+      <div class="speaker-box-header">
+        <span class="spk-dot" style="background:${color}"></span>
+        <span class="spk-name" title="Click to rename" contenteditable="false">${escapeHtml(name)}</span>
+      </div>
+      <div class="speaker-box-body"></div>
+    `;
+
+        // Rename on click
+        const nameEl = box.querySelector('.spk-name');
+        nameEl.addEventListener('click', () => {
+          nameEl.contentEditable = 'true';
+          nameEl.focus();
+          const sel = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(nameEl);
+          sel.removeAllRanges(); sel.addRange(range);
+        });
+        nameEl.addEventListener('blur', () => {
+          nameEl.contentEditable = 'false';
+          speakerBoxes[speakerId].name = nameEl.textContent.trim() || name;
+          recalculateSpeakingChart(finalizedTurns);
+        });
+        nameEl.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
+        });
+
+        speakerContainer.appendChild(box);
+
+        speakerBoxes[speakerId] = {
+          boxEl: box,
+          bodyEl: box.querySelector('.speaker-box-body'),
+          color,
+          name,
+        };
+        return speakerBoxes[speakerId];
+      }
+
+      function speakerName(id) {
+        return speakerBoxes[id] ? speakerBoxes[id].name : ('Speaker ' + id);
+      }
+
+      function escapeHtml(s) {
+        const d = document.createElement('div'); d.innerText = s; return d.innerHTML;
+      }
+
+      function fmtTime() {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      }
+
+      // ── Interim bar (pre-speaker text) ────────────────────────────────────
+      function setInterimText(text) {
+        if (!text) { interimBar.innerHTML = ''; interimEl = null; return; }
+        if (!interimEl) {
+          interimEl = document.createElement('div');
+          interimEl.className = 'interim-text';
+          interimBar.innerHTML = '';
+          interimBar.appendChild(interimEl);
+        }
+        interimEl.textContent = text;
+      }
+
+      // ── AssemblyAI Turn handler ───────────────────────────────────────────
+      let nextGlobalTurnOrder = 1;
+
+      function handleAaiTurn(data, fTurns) {
+        const turnOrder = data.turn_order;
+        const text = data.transcript || '';
+        const isFinal = !!data.end_of_turn;
+        const rawSpk = data.speaker_label || null;
+        const speakerId = (rawSpk && rawSpk !== 'PENDING') ? rawSpk : null;
+
+        let entry = activeTurns[turnOrder];
+
+        if (!entry) {
+          // Brand new turn — create a line element
+          const turnEl = document.createElement('div');
+          turnEl.className = 'turn-line interim';
+
+          if (speakerId) {
+            const box = getOrCreateSpeakerBox(speakerId);
+            box.bodyEl.appendChild(turnEl);
+            scrollBoxToBottom(box.bodyEl);
+          }
+          // If no speaker yet, keep in interim bar (handled below)
+
+          entry = { turnEl, speakerId };
+          activeTurns[turnOrder] = entry;
+        } else {
+          // Existing turn — if speaker arrived/changed, move element into speaker box
+          if (speakerId && speakerId !== entry.speakerId) {
+            const box = getOrCreateSpeakerBox(speakerId);
+            box.bodyEl.appendChild(entry.turnEl);
+            scrollBoxToBottom(box.bodyEl);
+            entry.speakerId = speakerId;
+          }
+        }
+
+        // Update text
+        if (speakerId) {
+          entry.turnEl.textContent = text;
+          setInterimText(''); // clear interim bar if we now have a speaker
+        } else {
+          setInterimText(text); // show in interim bar until speaker known
+          entry.turnEl.textContent = ''; // keep element empty until moved
+        }
+
+        // Start audio buffering for this turn
+        if (!turnAudioBuffers[turnOrder]) {
+          startTurnAudioBuffer(turnOrder);
+        }
+
+        if (!isFinal) return;
+
+        // ── Finalize ──
+        finalizeTurnAudioBuffer(turnOrder);
+        delete activeTurns[turnOrder];
+        entry.turnEl.classList.remove('interim');
+
+        if (!text.trim()) {
+          entry.turnEl.remove();
+          setInterimText('');
+          return;
+        }
+
+        // ── Extract contiguous word-level speaker segments ──
+        const words = data.words || [];
+        let segments = [];
+        if (words.length > 0) {
+          let cur = null;
+          for (const w of words) {
+            const spk = w.speaker || speakerId || 'A';
+            const wt = (w.word || w.text || '').trim();
+            if (!wt) continue;
+            if (!cur || cur.speaker !== spk) {
+              if (cur) segments.push(cur);
+              cur = { speaker: spk, words: [wt], startMs: w.start, endMs: w.end };
+            } else {
+              cur.words.push(wt);
+              cur.endMs = w.end;
+            }
+          }
+          if (cur) segments.push(cur);
+        }
+
+        // Fallback to single segment if no word diarization returned
+        if (segments.length === 0) {
+          segments = [{
+            speaker: speakerId || 'A',
+            words: [text],
+            startMs: 0,
+            endMs: 0
+          }];
+        }
+
+        const turnStartMs = words.length > 0 ? words[0].start : 0;
+
+        segments.forEach((seg, idx) => {
+          const segText = seg.words.join(' ').trim();
+          if (!segText) return;
+
+          const segSpeaker = seg.speaker || 'A';
+          const segDuration = Math.max(0.4, ((seg.endMs - seg.startMs) / 1000) || (seg.words.length * 0.4));
+          const segTurnOrder = nextGlobalTurnOrder++;
+
+          let segEl;
+          if (idx === 0) {
+            segEl = entry.turnEl;
+          } else {
+            segEl = document.createElement('div');
+            segEl.className = 'turn-line';
+          }
+
+          const box = getOrCreateSpeakerBox(segSpeaker);
+          box.bodyEl.appendChild(segEl);
+          segEl.textContent = segText;
+          scrollBoxToBottom(box.bodyEl);
+
+          // Precise sliced audio for this specific speaker segment
+          const segAudioB64 = getTurnAudioSliceBase64(turnOrder, seg.startMs, seg.endMs, turnStartMs);
+
+          // Record for download
+          rawLines.push({ time: fmtTime(), text: segText, speakerId: segSpeaker });
+
+          // Store for speaking chart
+          fTurns[segTurnOrder] = { turnEl: segEl, speakerId: segSpeaker, text: segText, duration: segDuration };
+
+          // Kick off background translation
+          computeTranslations(segEl, segText);
+
+          // Auto-identify this turn against registered voiceprints
+          autoIdentifyTurn(segTurnOrder, fTurns, segAudioB64);
+
+          // Upload turn audio to backend for admin page access
+          uploadTurnAudioToBackend(segTurnOrder, segText, segSpeaker, segAudioB64);
+        });
+
+        setInterimText('');
+
+        // Update speaking time chart from all finalized turns
+        recalculateSpeakingChart(fTurns);
+        updatePendingCount();
+        if (isPendingFilterActive) applyPendingFilter();
+
+        // Prune old audio buffers
+        pruneOldTurnAudio();
+      }
+
+      function scrollBoxToBottom(bodyEl) {
+        if (!bodyEl) return;
+        bodyEl.scrollTo({ top: bodyEl.scrollHeight, behavior: 'smooth' });
+      }
+
+      // ── Audio Turn Buffering (for ECAPA-TDNN) ──────────────────────────────
+      const TURN_AUDIO_MAX_SAMPLES = 16000 * 30;
+      const turnAudioBuffers = {};  // turnOrder -> { chunks: [Int16Array, ...], totalSamples: int }
+      let currentRecordingTurnOrder = null;
+
+      function startTurnAudioBuffer(turnOrder) {
+        currentRecordingTurnOrder = turnOrder;
+        if (!turnAudioBuffers[turnOrder]) {
+          turnAudioBuffers[turnOrder] = { chunks: [], totalSamples: 0 };
+        }
+      }
+
+      function appendTurnAudio(turnOrder, int16Chunk) {
+        const buf = turnAudioBuffers[turnOrder];
+        if (!buf) return;
+        if (buf.totalSamples >= TURN_AUDIO_MAX_SAMPLES) return; // cap
+        buf.chunks.push(int16Chunk);
+        buf.totalSamples += int16Chunk.length;
+      }
+
+      function finalizeTurnAudioBuffer(turnOrder) {
+        if (currentRecordingTurnOrder === turnOrder) {
+          currentRecordingTurnOrder = null;
+        }
+      }
+
+      function getTurnAudioSliceBase64(turnOrder, startMs, endMs, turnStartMs) {
+        const buf = turnAudioBuffers[turnOrder];
+        if (!buf || buf.chunks.length === 0) return null;
+
+        const merged = new Int16Array(buf.totalSamples);
+        let offset = 0;
+        for (const chunk of buf.chunks) {
+          merged.set(chunk, offset);
+          offset += chunk.length;
+        }
+
+        // Extract precise segment slice if timestamps provided
+        if (startMs && endMs && endMs > startMs && turnStartMs !== undefined) {
+          const sampleRate = 16000;
+          const startSample = Math.max(0, Math.floor(((startMs - turnStartMs) / 1000) * sampleRate));
+          const endSample = Math.min(merged.length, Math.ceil(((endMs - turnStartMs) / 1000) * sampleRate));
+          if (endSample > startSample && (endSample - startSample) >= 0.3 * sampleRate) {
+            const slice = merged.subarray(startSample, endSample);
+            const bytes = new Uint8Array(slice.buffer, slice.byteOffset, slice.byteLength);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            return btoa(binary);
+          }
+        }
+
+        // Full buffer fallback
+        const bytes = new Uint8Array(merged.buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary);
+      }
+
+      function getTurnAudioBase64(turnOrder) {
+        return getTurnAudioSliceBase64(turnOrder);
+      }
+
+      // Prune old turn audio to prevent memory bloat (keep last 50 turns)
+      function pruneOldTurnAudio() {
+        const keys = Object.keys(turnAudioBuffers).map(Number).sort((a,b) => a - b);
+        while (keys.length > 50) {
+          delete turnAudioBuffers[keys.shift()];
+        }
+      }
+
+      // ── Audio / WebSocket ─────────────────────────────────────────────────
+      let listening = false;
+      let micStream = null;
+      let aaiSocket = null;
+      let streamCtx = null, streamSource = null, streamProcessor = null, streamSilentGain = null;
+      let lastAudioFrameTime = 0;
+
+      function floatTo16BitPCM(float32Array) {
+        const buffer = new ArrayBuffer(float32Array.length * 2);
+        const view = new DataView(buffer);
+        for (let i = 0; i < float32Array.length; i++) {
+          const s = Math.max(-1, Math.min(1, float32Array[i]));
+          view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        }
+        return buffer;
+      }
+
+      async function setupMic() {
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+          });
+        } catch (err) {
+          setStatus('Mic access failed: ' + err.message);
+        }
+      }
+      function teardownMic() {
+        if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      }
+
+      async function setupAssemblyAIStream() {
+        let tokenData;
+        try {
+          const resp = await fetch('/api/streaming-token');
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          tokenData = await resp.json();
+          if (tokenData.error) throw new Error(tokenData.error);
+        } catch (err) {
+          setStatus('Could not get streaming token: ' + err.message);
+          return;
+        }
+
+        const fTurns = finalizedTurns;
+
+        const wsParams = new URLSearchParams({
+          sample_rate: '16000',
+          speech_model: 'universal-3-5-pro',
+          mode: 'balanced',
+          speaker_labels: 'true',
+          max_speakers: '4',
+          token: tokenData.token
+        });
+        aaiSocket = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?${wsParams.toString()}`);
+
+        aaiSocket.onopen = () => {
+          setStatus('Listening…');
+          try {
+            streamCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            streamSource = streamCtx.createMediaStreamSource(micStream);
+            streamProcessor = streamCtx.createScriptProcessor(2048, 1, 1);
+            streamProcessor.onaudioprocess = (e) => {
+              if (!aaiSocket || aaiSocket.readyState !== WebSocket.OPEN) return;
+              lastAudioFrameTime = Date.now();
+              const float32 = e.inputBuffer.getChannelData(0);
+              const pcmBuf = floatTo16BitPCM(float32);
+              aaiSocket.send(pcmBuf);
+
+              // Also buffer audio for the current active turn (for voiceprint tagging)
+              if (currentRecordingTurnOrder !== null) {
+                const int16Copy = new Int16Array(pcmBuf.slice(0));
+                appendTurnAudio(currentRecordingTurnOrder, int16Copy);
+              }
+            };
+            streamSource.connect(streamProcessor);
+            streamSilentGain = streamCtx.createGain();
+            streamSilentGain.gain.value = 0;
+            streamProcessor.connect(streamSilentGain);
+            streamSilentGain.connect(streamCtx.destination);
+          } catch (err) {
+            setStatus('Audio setup failed: ' + err.message);
+          }
+        };
+
+        aaiSocket.onmessage = (event) => {
+          let data;
+          try { data = JSON.parse(event.data); } catch (e) { return; }
+          if (data.type === 'Begin') {
+            setStatus('Listening…');
+          } else if (data.type === 'SpeechStarted') {
+            // activity signal — no action needed
+          } else if (data.type === 'Turn') {
+            handleAaiTurn(data, fTurns);
+          } else if (data.type === 'Termination') {
+            setStatus('Stopped.');
+            closeSocket();
+          }
+        };
+
+        aaiSocket.onerror = () => { };
+        aaiSocket.onclose = () => { };
+      }
+
+      // Stop the audio capture graph (mic → processor → AAI socket) but leave socket open.
+      function teardownAudio() {
+        if (streamProcessor) { streamProcessor.disconnect(); streamProcessor.onaudioprocess = null; streamProcessor = null; }
+        if (streamSilentGain) { streamSilentGain.disconnect(); streamSilentGain = null; }
+        if (streamSource) { streamSource.disconnect(); streamSource = null; }
+        if (streamCtx) { streamCtx.close().catch(() => { }); streamCtx = null; }
+        Object.values(activeTurns).forEach(e => e.turnEl.remove());
+        Object.keys(activeTurns).forEach(k => delete activeTurns[k]);
+        setInterimText('');
+      }
+
+      // Close the WebSocket (called after Termination message arrives).
+      function closeSocket() {
+        if (aaiSocket) { aaiSocket.close(); aaiSocket = null; }
+      }
+
+      // Full teardown — used on page nav / mic failure / hard stop.
+      function teardownStream() {
+        teardownAudio();
+        closeSocket();
+      }
+
+      // ── Watchdog ──────────────────────────────────────────────────────────
+      let watchdogTimer = null;
+      function startWatchdog() {
+        stopWatchdog();
+        watchdogTimer = setInterval(() => {
+          if (!listening) return;
+          if (Date.now() - lastAudioFrameTime > 8000) {
+            handleMicFailure();
+          }
+        }, 2000);
+      }
+      function stopWatchdog() { if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; } }
+
+      function handleMicFailure() {
+        listening = false;
+        stopWatchdog();
+        teardownStream();
+        teardownMic();
+        setStatus('Mic dropped. Click Resume.');
+        resumeBtn.style.display = 'inline-block';
+      }
+
+      // ── Pure Typographic Word Cloud ──────────────────────────────────────
+      const wordcloudPane = document.getElementById('wordcloudPane');
+      let wordcloudTimer = null;
+      let isFetchingWordcloud = false;
+
+      const TYPOGRAPHY_COLORS = [
+        '#4f46e5', // Indigo
+        '#ea580c', // Sunset Orange
+        '#16a34a', // Emerald Green
+        '#dc2626', // Crimson Red
+        '#9333ea', // Royal Purple
+        '#0284c7', // Sky Blue
+        '#ca8a04', // Amber Gold
+        '#0d9488', // Deep Teal
+        '#db2777', // Magenta Pink
+        '#1e293b', // Slate Dark
+        '#2563eb'  // Cobalt Blue
+      ];
+
+      function buildFullEnglishTranscript() {
+        const turns = Object.values(finalizedTurns);
+        if (turns.length === 0) return '';
+        return turns.map(t => `${speakerName(t.speakerId)}: ${t.turnEl.dataset.en || t.text}`).join('\n');
+      }
+
+      async function updateWordCloud() {
+        if (!listening || isFetchingWordcloud) return;
+        const transcript = buildFullEnglishTranscript();
+        if (!transcript || Object.keys(finalizedTurns).length < 2) return;
+
+        try {
+          isFetchingWordcloud = true;
+          const resp = await fetch('/api/wordcloud', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transcript })
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.words && data.words.length > 0) {
+              renderWordCloud(data.words);
+            }
+          }
+        } catch (e) {
+        } finally {
+          isFetchingWordcloud = false;
+        }
+      }
+
+      const RANK_SIZES = [44, 34, 28, 23, 19, 16, 14, 13, 12];
+      const RANK_WEIGHTS = ['800', '800', '700', '700', '600', '600', '500', '500', '500'];
+
+      function renderWordCloud(wordList) {
+        if (!wordcloudPane || !wordList || wordList.length === 0) return;
+        wordcloudPane.innerHTML = '';
+
+        // Normalize word items: [text, weight]
+        const items = wordList.map(item => {
+          if (Array.isArray(item)) return [String(item[0]).trim(), Number(item[1]) || 20];
+          return [String(item.text || item).trim(), Number(item.weight) || 20];
+        }).filter(i => i[0] && i[0].length > 2);
+
+        if (items.length === 0) return;
+
+        // Sort by weight descending
+        const sorted = [...items].sort((a, b) => b[1] - a[1]);
+
+        // Arrange center-out with rank assigned
+        const arranged = [];
+        sorted.forEach((item, rank) => {
+          const fontSize = RANK_SIZES[Math.min(rank, RANK_SIZES.length - 1)];
+          const fontWeight = RANK_WEIGHTS[Math.min(rank, RANK_WEIGHTS.length - 1)];
+          const itemWithStyle = { text: item[0], fontSize, fontWeight, rank };
+
+          if (rank % 2 === 0) arranged.push(itemWithStyle);
+          else arranged.unshift(itemWithStyle);
+        });
+
+        arranged.forEach((obj, idx) => {
+          const color = TYPOGRAPHY_COLORS[(Math.abs(obj.text.charCodeAt(0) + idx)) % TYPOGRAPHY_COLORS.length];
+          const span = document.createElement('span');
+          span.className = 'wc-typography-word';
+          span.style.fontSize = `${obj.fontSize}px`;
+          span.style.fontWeight = obj.fontWeight;
+          span.style.color = color;
+          span.textContent = obj.text;
+          wordcloudPane.appendChild(span);
+        });
+      }
+
+      function startWordCloudLoop() {
+        stopWordCloudLoop();
+        wordcloudTimer = setInterval(updateWordCloud, 30000);
+        // Initial fetch after 30 seconds of speech
+        setTimeout(updateWordCloud, 30000);
+      }
+
+      function stopWordCloudLoop() {
+        if (wordcloudTimer) { clearInterval(wordcloudTimer); wordcloudTimer = null; }
+      }
+
+      // ── Recording control ─────────────────────────────────────────────────
+      async function beginRecording() {
+        nextGlobalTurnOrder = 1;
+        listening = true;
+        setStatus('Starting...');
+        lastAudioFrameTime = Date.now();
+        await setupMic();
+        if (!micStream) { listening = false; resumeBtn.style.display = 'inline-block'; return; }
+        await setupAssemblyAIStream();
+        startWatchdog();
+        startWordCloudLoop();
+      }
+
+      function endRecording() {
+        listening = false; stopWatchdog(); stopWordCloudLoop();
+        teardownMic();
+        teardownAudio();
+        if (aaiSocket && aaiSocket.readyState === WebSocket.OPEN) {
+          try { aaiSocket.send(JSON.stringify({ type: 'Terminate' })); } catch (e) { }
+        } else {
+          closeSocket();
+        }
+      }
+
+      // ── UI Events ─────────────────────────────────────────────────────────
+      startBtn.addEventListener('click', () => {
+        homePage.style.display = 'none';
+        appPage.style.display = 'flex';
+        initSpeakingChart();
+        beginRecording();
+      });
+
+      stopBtn.addEventListener('click', endRecording);
+
+      resumeBtn.addEventListener('click', () => {
+        resumeBtn.style.display = 'none';
+        beginRecording();
+      });
+
+      // ── BACKGROUND: Upload turn audio to backend & auto-identify ────────
+      let registeredUsers = [];
+
+      async function uploadTurnAudioToBackend(turnOrder, text, speakerId, explicitAudioB64) {
+        const audioB64 = explicitAudioB64 || getTurnAudioBase64(turnOrder);
+        if (!audioB64) return;
+        try {
+          await fetch('/api/store-turn-audio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              turn_order: turnOrder,
+              audio_b64: audioB64,
+              text: text || '',
+              speaker_label: speakerId || 'A'
+            })
+          });
+        } catch(e) {}
+      }
+
+      // ── Find or Create a dedicated Speaker Box by real name ─────────────────
+      function getOrCreateNamedSpeakerBox(realName) {
+        // 1. Check if an existing box already has this exact name
+        for (const [sid, box] of Object.entries(speakerBoxes)) {
+          if (box.name.toLowerCase() === realName.toLowerCase()) {
+            return { speakerId: sid, box };
+          }
+        }
+
+        // 2. Create a dedicated box for this speaker name
+        const customId = 'USR_' + realName.replace(/[^a-zA-Z0-9_]/g, '_');
+        if (speakerBoxes[customId]) {
+          return { speakerId: customId, box: speakerBoxes[customId] };
+        }
+
+        const idx = Object.keys(speakerBoxes).length;
+        const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
+        const name = realName;
+
+        const foundUser = registeredUsers.find(u => (u.name || '').toLowerCase() === realName.toLowerCase());
+        const avatarHtml = (foundUser && foundUser.avatar_b64)
+          ? `<img class="spk-avatar-img" src="${foundUser.avatar_b64}" alt="${escapeHtml(name)}">`
+          : '';
+
+        const boxEl = document.createElement('div');
+        boxEl.className = 'speaker-box';
+        boxEl.dataset.speaker = customId;
+        boxEl.innerHTML = `
+          <div class="speaker-box-header">
+            <span class="spk-dot" style="background:${color}"></span>
+            ${avatarHtml}
+            <span class="spk-name" title="Click to rename" contenteditable="false">${escapeHtml(name)}</span>
+          </div>
+          <div class="speaker-box-body"></div>
+        `;
+
+        speakerContainer.appendChild(boxEl);
+
+        const newBox = {
+          boxEl,
+          bodyEl: boxEl.querySelector('.speaker-box-body'),
+          color,
+          name,
+        };
+        speakerBoxes[customId] = newBox;
+        return { speakerId: customId, box: newBox };
+      }
+
+      // Reassign a turn to a named speaker (moves the DOM line to the target speaker box)
+      function reassignTurnToSpeaker(turnOrder, realName) {
+        const ft = finalizedTurns[turnOrder];
+        if (!ft || !realName) return;
+
+        const oldSpeakerId = ft.speakerId;
+        const { speakerId: targetSpeakerId, box: targetBox } = getOrCreateNamedSpeakerBox(realName);
+
+        if (targetSpeakerId !== oldSpeakerId) {
+          targetBox.bodyEl.appendChild(ft.turnEl);
+          scrollBoxToBottom(targetBox.bodyEl);
+          ft.speakerId = targetSpeakerId;
+
+          const line = rawLines.find(l => l.text === ft.text && l.speakerId === oldSpeakerId);
+          if (line) line.speakerId = targetSpeakerId;
+        }
+
+        // Clean empty boxes if any box has 0 sentences left
+        for (const [sid, box] of Object.entries(speakerBoxes)) {
+          if (box.bodyEl && box.bodyEl.children.length === 0) {
+            box.boxEl.remove();
+            delete speakerBoxes[sid];
+          }
+        }
+
+        recalculateSpeakingChart(finalizedTurns);
+        updatePendingCount();
+        if (isPendingFilterActive) applyPendingFilter();
+      }
+
+      // Auto-identify a finalized turn against registered voiceprints
+      async function autoIdentifyTurn(turnOrder, fTurns, explicitAudioB64) {
+        if (registeredUsers.length === 0) {
+          try {
+            const r = await fetch('/api/registered-users');
+            if (r.ok) { registeredUsers = (await r.json()).users || []; }
+          } catch(e) {}
+          if (registeredUsers.length === 0) return;
+        }
+        const audioB64 = explicitAudioB64 || getTurnAudioBase64(turnOrder);
+        if (!audioB64) return;
+        try {
+          const resp = await fetch('/api/identify-turn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turn_order: turnOrder, audio_b64: audioB64 })
+          });
+          if (!resp.ok) return;
+          const result = await resp.json();
+          if (result.winner && fTurns[turnOrder]) {
+            fTurns[turnOrder].voiceTagged = true;
+            fTurns[turnOrder].voiceConfidence = result.confidence_pct + '%';
+            reassignTurnToSpeaker(turnOrder, result.winner);
+          }
+        } catch(e) {}
+      }
+
+      // Poll for admin-triggered reassignments & registered users every 1.5s
+      setInterval(async () => {
+        try {
+          const [uResp, tResp] = await Promise.all([
+            fetch('/api/registered-users'),
+            fetch('/api/turns')
+          ]);
+          if (uResp.ok) {
+            const uData = await uResp.json();
+            registeredUsers = uData.users || [];
+
+            // Update avatars in existing speaker box headers
+            for (const [sid, box] of Object.entries(speakerBoxes)) {
+              const u = registeredUsers.find(ru => (ru.name || '').toLowerCase() === box.name.toLowerCase());
+              const headerEl = box.boxEl.querySelector('.speaker-box-header');
+              if (headerEl) {
+                let avatarEl = headerEl.querySelector('.spk-avatar-img');
+                if (u && u.avatar_b64) {
+                  if (!avatarEl) {
+                    avatarEl = document.createElement('img');
+                    avatarEl.className = 'spk-avatar-img';
+                    headerEl.insertBefore(avatarEl, headerEl.querySelector('.spk-name'));
+                  }
+                  if (avatarEl.src !== u.avatar_b64) avatarEl.src = u.avatar_b64;
+                } else if (avatarEl) {
+                  avatarEl.remove();
+                }
+              }
+            }
+          }
+          if (tResp.ok) {
+            const tData = await tResp.json();
+            const turns = tData.turns || [];
+            turns.forEach(t => {
+              const ft = finalizedTurns[t.turn_order];
+              if (ft && t.tagged_as) {
+                const currentName = speakerName(ft.speakerId);
+                if (currentName.toLowerCase() !== t.tagged_as.toLowerCase()) {
+                  reassignTurnToSpeaker(t.turn_order, t.tagged_as);
+                }
+              }
+            });
+            updatePendingCount();
+            if (isPendingFilterActive) applyPendingFilter();
+          }
+        } catch(e) {}
+      }, 1500);
+
+
+      // ── Language toggle buttons ───────────────────────────────────────────
+      function setViewMode(mode) {
+        viewMode = mode;
+        btnEnglish.classList.toggle('active', mode === 'en');
+        btnHindi.classList.toggle('active', mode === 'hi');
+        applyViewMode();
+      }
+      btnEnglish.addEventListener('click', () => {
+        setViewMode(viewMode === 'en' ? 'original' : 'en');
+      });
+      btnHindi.addEventListener('click', () => {
+        setViewMode(viewMode === 'hi' ? 'original' : 'hi');
+      });
+
+      // ── Pending Filter ────────────────────────────────────────────────────
+      const btnFilterPending = document.getElementById('btnFilterPending');
+      const pendingCountBadge = document.getElementById('pendingCountBadge');
+      let isPendingFilterActive = false;
+
+      function updatePendingCount() {
+        if (!pendingCountBadge) return;
+        let count = 0;
+        for (const turn of Object.values(finalizedTurns)) {
+          if (!turn || !turn.speakerId) continue;
+          const sid = String(turn.speakerId).trim().toUpperCase();
+          const sName = speakerName(turn.speakerId).trim().toLowerCase();
+          const isRealUser = turn.speakerId.startsWith('USR_') || turn.voiceTagged;
+          if (!isRealUser || sid === 'PENDING' || sName.includes('pending')) {
+            count++;
+          }
+        }
+        pendingCountBadge.textContent = count;
+      }
+
+      function applyPendingFilter() {
+        btnFilterPending.classList.toggle('active', isPendingFilterActive);
+
+        for (const [sid, box] of Object.entries(speakerBoxes)) {
+          let hasVisibleTurn = false;
+          const turnLines = box.bodyEl.querySelectorAll('.turn-line');
+          turnLines.forEach(lineEl => {
+            if (!isPendingFilterActive) {
+              lineEl.style.display = '';
+              hasVisibleTurn = true;
+            } else {
+              const ft = Object.values(finalizedTurns).find(t => t.turnEl === lineEl);
+              const isRealUser = ft && (ft.speakerId.startsWith('USR_') || ft.voiceTagged);
+              if (!isRealUser) {
+                lineEl.style.display = '';
+                hasVisibleTurn = true;
+              } else {
+                lineEl.style.display = 'none';
+              }
+            }
+          });
+
+          if (isPendingFilterActive) {
+            box.boxEl.style.display = hasVisibleTurn ? 'flex' : 'none';
+          } else {
+            box.boxEl.style.display = 'flex';
+          }
+        }
+      }
+
+      btnFilterPending.addEventListener('click', () => {
+        isPendingFilterActive = !isPendingFilterActive;
+        applyPendingFilter();
+      });
+
+      // ── AI ANALYSIS SIDEBAR ────────────────────────────────────────────────
+      const aiAnalysisBtn = document.getElementById('aiAnalysisBtn');
+      const aiSidebar = document.getElementById('aiSidebar');
+      const sbClose = document.getElementById('sbClose');
+      const sbBody = document.getElementById('sbBody');
+      const sbAnalyseNow = document.getElementById('sbAnalyseNow');
+      const appPageEl = document.getElementById('app-page');
+
+      function openSidebar() {
+        aiSidebar.classList.add('open');
+        appPageEl.classList.add('sidebar-open');
+      }
+      function closeSidebar() {
+        aiSidebar.classList.remove('open');
+        appPageEl.classList.remove('sidebar-open');
+      }
+      aiAnalysisBtn.addEventListener('click', () => {
+        aiSidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+      });
+      sbClose.addEventListener('click', closeSidebar);
+
+      function buildTranscriptText() {
+        if (rawLines.length === 0) return '';
+        return rawLines.map(l => `${speakerName(l.speakerId)}: ${l.text}`).join('\n');
+      }
+
+      function addAnalysisCard() {
+        sbBody.querySelector('.sb-empty')?.remove();
+        const card = document.createElement('div');
+        card.className = 'analysis-card loading';
+        card.innerHTML = `
+      <div class="analysis-card-header">
+        <span class="analysis-card-model">Gemini 2.0 Flash</span>
+        <span class="analysis-card-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      </div>
+      <div class="analysis-card-body">Analysing transcript…</div>`;
+        sbBody.appendChild(card);
+        sbBody.scrollTop = sbBody.scrollHeight;
+        return card;
+      }
+
+      async function runAnalysis() {
+        const transcript = buildTranscriptText();
+        if (!transcript) {
+          sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">⚠️</span>No transcript yet — start recording first.</div>';
+          return;
+        }
+        const card = addAnalysisCard();
+        const bodyEl = card.querySelector('.analysis-card-body');
+        try {
+          const resp = await fetch('/api/analyse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transcript })
+          });
+          if (!resp.ok) throw new Error('Server error ' + resp.status);
+          const data = await resp.json();
+          if (data.error) throw new Error(data.error);
+          card.classList.remove('loading');
+          bodyEl.textContent = data.result || '(empty response)';
+        } catch (err) {
+          card.classList.remove('loading');
+          bodyEl.style.color = '#f38ba8';
+          bodyEl.textContent = 'Error: ' + err.message;
+        }
+        sbBody.scrollTop = sbBody.scrollHeight;
+      }
+
+      sbAnalyseNow.addEventListener('click', runAnalysis);
+
+
+      // ── Download ──────────────────────────────────────────────────────────
+      downloadBtn.addEventListener('click', () => {
+        if (rawLines.length === 0) { alert('No transcript yet.'); return; }
+        const text = rawLines.map(l => `[${l.time}] ${speakerName(l.speakerId)}: ${l.text}`).join('\n');
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        a.href = url; a.download = `transcript-${stamp}.txt`;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+      });
+
+    })();
+  </script>
+</body>
+
+</html>

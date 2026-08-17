@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEEBUG Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1a202c;
+      --muted: #718096;
+      --accent: #4f46e5;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 4px 16px rgba(0, 0, 0, .04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .admin-app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── HEADER (Same as index.html) ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .header-tag {
+      font-size: 12px;
+      background: #e0e7ff;
+      color: var(--accent);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .12s, border-color .12s;
+    }
+    .btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .btn-primary:hover { opacity: .92; background: var(--accent); }
+
+    .btn-danger {
+      color: var(--danger);
+    }
+    .btn-danger:hover {
+      background: #fef2f2;
+      border-color: #fca5a5;
+    }
+
+    /* ── MAIN BODY ── */
+    .main-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── LEFT: Turns Column ── */
+    .turns-col {
+      flex: 65;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .col-header {
+      padding: 14px 24px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .count-badge {
+      background: #e2e8f0;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .turns-container {
+      flex: 1;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .turn-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .turn-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .turn-num {
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .turn-spk {
+      color: var(--muted);
+    }
+
+    .turn-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .turn-badge.tagged {
+      background: #dcfce7;
+      color: var(--success);
+    }
+    .turn-badge.detected {
+      background: #e0e7ff;
+      color: var(--accent);
+    }
+
+    .turn-text {
+      font-size: 14.5px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .turn-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 4px;
+    }
+
+    .turn-select {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--text);
+      font-family: inherit;
+      outline: none;
+      flex: 1;
+      max-width: 260px;
+      cursor: pointer;
+    }
+    .turn-select:focus { border-color: var(--accent); }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-sm:hover { background: #f1f5f9; }
+
+    /* ── RIGHT: Registered Profiles Column ── */
+    .profiles-col {
+      flex: 35;
+      min-width: 280px;
+      max-width: 400px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .create-user-section {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      background: #fafbfc;
+    }
+
+    .create-user-input {
+      flex: 1;
+      padding: 7px 12px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      outline: none;
+      font-family: inherit;
+    }
+    .create-user-input:focus { border-color: var(--accent); }
+
+    .profiles-list {
+      flex: 1;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .profile-card {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .profile-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #e0e7ff;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      border: 1px solid var(--border);
+    }
+    .profile-avatar:hover::after {
+      content: '📷';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .profile-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .profile-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .profile-samples {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .profile-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      flex-shrink: 0;
+    }
+    .profile-status-dot.active {
+      background: var(--success);
+    }
+
+    .btn-del-profile {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: color .12s, background .12s;
+      flex-shrink: 0;
+    }
+    .btn-del-profile:hover {
+      color: var(--danger);
+      background: #fef2f2;
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 10px 24px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .footer-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .footer-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="admin-app">
+
+    <!-- Hidden file input for avatar upload -->
+    <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
+
+    <!-- HEADER -->
+    <header>
+      <span class="header-title">DEEBUG</span>
+      <span class="header-tag">Admin Panel</span>
+      <div class="header-actions">
+        <button class="btn btn-danger" id="btnClearTurns">Clear Turns</button>
+        <button class="btn btn-danger" id="btnClearAll">Reset Everything</button>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <div class="main-body">
+
+      <!-- LEFT: Live Turns -->
+      <div class="turns-col">
+        <div class="col-header">
+          <span>Live Meeting Turns</span>
+          <span class="count-badge" id="turnsCount">0</span>
+        </div>
+        <div class="turns-container" id="turnsContainer">
+          <div class="empty-state" id="emptyTurns">
+            Waiting for turns from live meeting…<br>
+            Start recording on the <a href="/" class="footer-link">meeting page</a>.
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Registered Profiles -->
+      <div class="profiles-col">
+        <div class="col-header">
+          <span>Registered Profiles</span>
+          <span class="count-badge" id="profilesCount">0</span>
+        </div>
+
+        <div class="create-user-section">
+          <input class="create-user-input" id="newUserNameInput" placeholder="New user name (e.g. Raj)">
+          <button class="btn btn-primary" id="btnCreateUser">Add</button>
+        </div>
+
+        <div class="profiles-list" id="profilesList">
+          <div class="empty-state" id="emptyProfiles">
+            No profiles registered yet.<br>
+            Add a user or tag a turn.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+      <span id="footerStatus">Synced</span>
+      <a href="/" class="footer-link">← Back to Meeting View</a>
+    </footer>
+
+  </div>
+
+  <script>
+    (function () {
+      const turnsContainer = document.getElementById('turnsContainer');
+      const emptyTurns = document.getElementById('emptyTurns');
+      const turnsCount = document.getElementById('turnsCount');
+      const profilesList = document.getElementById('profilesList');
+      const emptyProfiles = document.getElementById('emptyProfiles');
+      const profilesCount = document.getElementById('profilesCount');
+      const footerStatus = document.getElementById('footerStatus');
+      const avatarFileInput = document.getElementById('avatarFileInput');
+
+      const newUserNameInput = document.getElementById('newUserNameInput');
+      const btnCreateUser = document.getElementById('btnCreateUser');
+      const btnClearTurns = document.getElementById('btnClearTurns');
+      const btnClearAll = document.getElementById('btnClearAll');
+
+      let userNames = [];
+      let registeredUsers = [];
+      let activeUploadTargetUser = null;
+
+      function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.innerText = s || '';
+        return d.innerHTML;
+      }
+
+      // ── Avatar Upload Handler ──────────────────────────────────────────────
+      avatarFileInput.addEventListener('change', async () => {
+        const file = avatarFileInput.files[0];
+        if (!file || !activeUploadTargetUser) return;
+
+        // Resize and convert to data URL via canvas
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = async function() {
+            const canvas = document.createElement('canvas');
+            const maxDim = 160;
+            let w = img.width, h = img.height;
+            if (w > h) {
+              if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            } else {
+              if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const avatarB64 = canvas.toDataURL('image/jpeg', 0.85);
+
+            try {
+              const resp = await fetch('/api/upload-avatar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: activeUploadTargetUser, avatar_b64: avatarB64 })
+              });
+              if (resp.ok) {
+                await pollUsers();
+                footerStatus.textContent = `Photo updated for ${activeUploadTargetUser}`;
+              }
+            } catch(err) {}
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+        avatarFileInput.value = '';
+      });
+
+      // ── Create User ───────────────────────────────────────────────────────
+      async function createUser() {
+        const name = newUserNameInput.value.trim();
+        if (!name) return;
+        try {
+          const resp = await fetch('/api/create-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+          });
+          if (resp.ok) {
+            newUserNameInput.value = '';
+            await pollUsers();
+            footerStatus.textContent = `User "${name}" created`;
+          }
+        } catch (e) {}
+      }
+
+      btnCreateUser.addEventListener('click', createUser);
+      newUserNameInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') createUser();
+      });
+
+      // ── Delete User ───────────────────────────────────────────────────────
+      async function deleteUser(name) {
+        if (!confirm(`Delete profile "${name}" and reset its voiceprint?`)) return;
+        try {
+          const resp = await fetch('/api/delete-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+          });
+          if (resp.ok) {
+            await pollUsers();
+            await pollTurns();
+            footerStatus.textContent = `User "${name}" deleted`;
+          }
+        } catch(e) {}
+      }
+
+      // ── Poll Registered Users (In-Place Updates) ───────────────────────────
+      async function pollUsers() {
+        try {
+          const resp = await fetch('/api/registered-users');
+          if (!resp.ok) return;
+          const data = await resp.json();
+          registeredUsers = data.users || [];
+          userNames = data.names || registeredUsers.map(u => u.name || u);
+          profilesCount.textContent = registeredUsers.length;
+
+          if (registeredUsers.length === 0) {
+            if (!emptyProfiles.parentNode) profilesList.appendChild(emptyProfiles);
+            return;
+          }
+          if (emptyProfiles.parentNode) emptyProfiles.remove();
+
+          // Update profiles list in-place without wiping DOM
+          const existingCards = new Set();
+          registeredUsers.forEach(u => {
+            const safeId = 'p-' + u.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+            existingCards.add(safeId);
+            let card = document.getElementById(safeId);
+
+            const hasVp = u.has_voiceprint;
+            const samplesText = hasVp ? `${u.samples_count} sample${u.samples_count > 1 ? 's' : ''} (Centroid active)` : 'Awaiting voice sample';
+            const initials = u.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+            const avatarContent = u.avatar_b64
+              ? `<img class="profile-avatar-img" src="${u.avatar_b64}" alt="${escapeHtml(u.name)}">`
+              : initials;
+
+            if (!card) {
+              card = document.createElement('div');
+              card.className = 'profile-card';
+              card.id = safeId;
+              card.innerHTML = `
+                <div class="profile-avatar" title="Click to upload picture">${avatarContent}</div>
+                <div class="profile-info">
+                  <div class="profile-name">${escapeHtml(u.name)}</div>
+                  <div class="profile-samples">${samplesText}</div>
+                </div>
+                <div class="profile-status-dot ${hasVp ? 'active' : ''}"></div>
+                <button class="btn-del-profile" title="Delete Profile">✕</button>
+              `;
+
+              // Bind upload avatar click
+              const avatarEl = card.querySelector('.profile-avatar');
+              avatarEl.addEventListener('click', () => {
+                activeUploadTargetUser = u.name;
+                avatarFileInput.click();
+              });
+
+              // Bind delete button
+              const delBtn = card.querySelector('.btn-del-profile');
+              delBtn.addEventListener('click', () => deleteUser(u.name));
+
+              profilesList.appendChild(card);
+            } else {
+              // Update in-place
+              const samplesEl = card.querySelector('.profile-samples');
+              if (samplesEl && samplesEl.textContent !== samplesText) samplesEl.textContent = samplesText;
+
+              const dotEl = card.querySelector('.profile-status-dot');
+              if (dotEl) dotEl.className = 'profile-status-dot ' + (hasVp ? 'active' : '');
+
+              const avatarEl = card.querySelector('.profile-avatar');
+              if (avatarEl) {
+                if (u.avatar_b64) {
+                  let img = avatarEl.querySelector('.profile-avatar-img');
+                  if (!img) {
+                    avatarEl.innerHTML = `<img class="profile-avatar-img" src="${u.avatar_b64}" alt="${escapeHtml(u.name)}">`;
+                  } else if (img.src !== u.avatar_b64) {
+                    img.src = u.avatar_b64;
+                  }
+                } else if (avatarEl.querySelector('.profile-avatar-img')) {
+                  avatarEl.textContent = initials;
+                }
+              }
+            }
+          });
+
+          // Remove any deleted profiles
+          Array.from(profilesList.children).forEach(child => {
+            if (child.id && child.id.startsWith('p-') && !existingCards.has(child.id)) {
+              child.remove();
+            }
+          });
+
+        } catch (e) {}
+      }
+
+      // ── Poll Turns (In-Place Updates - ZERO FLICKERING) ────────────────────
+      async function pollTurns() {
+        try {
+          const resp = await fetch('/api/turns');
+          if (!resp.ok) return;
+          const data = await resp.json();
+          const turns = data.turns || [];
+          turnsCount.textContent = turns.length;
+
+          if (turns.length === 0) {
+            if (!emptyTurns.parentNode) {
+              turnsContainer.innerHTML = '';
+              turnsContainer.appendChild(emptyTurns);
+            }
+            return;
+          }
+          if (emptyTurns.parentNode) emptyTurns.remove();
+
+          const incomingTurnOrders = new Set(turns.map(t => t.turn_order));
+
+          // Remove any deleted turn cards
+          Array.from(turnsContainer.children).forEach(child => {
+            if (child.id && child.id.startsWith('t-')) {
+              const to = parseInt(child.id.replace('t-', ''));
+              if (!incomingTurnOrders.has(to)) child.remove();
+            }
+          });
+
+          // Process and update/insert each turn in-place
+          turns.forEach((t, idx) => {
+            const cardId = 't-' + t.turn_order;
+            let card = document.getElementById(cardId);
+
+            const isTagged = !!t.tagged_as;
+            const currentAssignment = t.tagged_as || t.predicted_speaker || '';
+
+            let badgeClass = isTagged ? 'tagged' : (t.predicted_speaker ? 'detected' : '');
+            let badgeText = isTagged ? `✓ Tagged: ${t.tagged_as}` : (t.predicted_speaker ? `🎯 Auto: ${t.predicted_speaker} (${t.predicted_confidence}%)` : '');
+
+            if (!card) {
+              // Create new turn card
+              card = document.createElement('div');
+              card.className = 'turn-card';
+              card.id = cardId;
+              card.innerHTML = `
+                <div class="turn-header">
+                  <span class="turn-num">#${t.turn_order}</span>
+                  <span class="turn-spk">Speaker ${t.speaker_label}</span>
+                  <span class="turn-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
+                </div>
+                <div class="turn-text">${escapeHtml(t.text || '(empty)')}</div>
+                <div class="turn-controls">
+                  <select class="turn-select" data-turn="${t.turn_order}">
+                    ${buildSelectOptions(currentAssignment)}
+                  </select>
+                  <button class="btn-sm" data-turn="${t.turn_order}">Save</button>
+                </div>
+              `;
+
+              // Insert at correct position
+              const existingChildren = Array.from(turnsContainer.children);
+              if (idx < existingChildren.length) {
+                turnsContainer.insertBefore(card, existingChildren[idx]);
+              } else {
+                turnsContainer.appendChild(card);
+              }
+
+              // Bind event listeners once on creation
+              bindCardEvents(card, t.turn_order);
+            } else {
+              // Card already exists — update in-place smoothly
+              const badgeEl = card.querySelector('.turn-badge');
+              if (badgeEl && badgeEl.textContent !== badgeText) {
+                badgeEl.className = 'turn-badge ' + badgeClass;
+                badgeEl.textContent = badgeText;
+              }
+
+              const selectEl = card.querySelector('.turn-select');
+              // Only update select if user is not actively interacting with it
+              if (selectEl && document.activeElement !== selectEl) {
+                const currentHtml = buildSelectOptions(currentAssignment);
+                if (selectEl.dataset.cachedHtml !== currentHtml) {
+                  selectEl.innerHTML = currentHtml;
+                  selectEl.dataset.cachedHtml = currentHtml;
+                }
+              }
+            }
+          });
+
+          footerStatus.textContent = `Synced · ${turns.length} turns`;
+        } catch (e) {}
+      }
+
+      function buildSelectOptions(selectedName) {
+        let opts = `<option value="">-- Assign Voice Tag --</option>`;
+        userNames.forEach(name => {
+          const isSel = (selectedName || '').toLowerCase() === name.toLowerCase();
+          opts += `<option value="${escapeHtml(name)}" ${isSel ? 'selected' : ''}>${escapeHtml(name)}</option>`;
+        });
+        opts += `<option value="__NEW__">➕ Create New User...</option>`;
+        return opts;
+      }
+
+      function bindCardEvents(card, turnOrder) {
+        const select = card.querySelector('.turn-select');
+        const btn = card.querySelector('.btn-sm');
+
+        select.addEventListener('change', async () => {
+          if (select.value === '__NEW__') {
+            const newName = prompt('Enter new user name:');
+            if (newName && newName.trim()) {
+              await assignTurn(turnOrder, newName.trim());
+            } else {
+              select.value = '';
+            }
+          } else if (select.value) {
+            await assignTurn(turnOrder, select.value);
+          }
+        });
+
+        btn.addEventListener('click', async () => {
+          if (select.value && select.value !== '__NEW__') {
+            await assignTurn(turnOrder, select.value);
+          }
+        });
+      }
+
+      async function assignTurn(turnOrder, name) {
+        try {
+          const resp = await fetch('/api/tag-turn-from-admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turn_order: turnOrder, speaker_name: name })
+          });
+          if (resp.ok) {
+            await pollUsers();
+            await pollTurns();
+          }
+        } catch (e) {}
+      }
+
+      // ── Clear Actions ─────────────────────────────────────────────────────
+      btnClearTurns.addEventListener('click', async () => {
+        if (!confirm('Clear all meeting turns?')) return;
+        try {
+          await fetch('/api/clear-all', { method: 'POST' });
+          turnsContainer.innerHTML = '';
+          turnsContainer.appendChild(emptyTurns);
+          turnsCount.textContent = '0';
+          await pollUsers();
+          await pollTurns();
+        } catch (e) {}
+      });
+
+      btnClearAll.addEventListener('click', async () => {
+        if (!confirm('Reset all users, voiceprints, and turns?')) return;
+        try {
+          await fetch('/api/clear-all', { method: 'POST' });
+          turnsContainer.innerHTML = '';
+          turnsContainer.appendChild(emptyTurns);
+          profilesList.innerHTML = '';
+          profilesList.appendChild(emptyProfiles);
+          turnsCount.textContent = '0';
+          profilesCount.textContent = '0';
+          await pollUsers();
+          await pollTurns();
+        } catch (e) {}
+      });
+
+      // ── Start Polling ─────────────────────────────────────────────────────
+      pollUsers();
+      pollTurns();
+      setInterval(pollTurns, 2000);
+      setInterval(pollUsers, 3500);
+    })();
+  </script>
+</body>
+</html>
