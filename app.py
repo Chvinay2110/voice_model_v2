@@ -87,6 +87,11 @@ def add_no_cache_headers(response):
     return response
 
 
+@app.route("/favicon.ico")
+def favicon():
+    return ("", 204)
+
+
 @app.route("/")
 def index():
     return send_from_directory(BASE_DIR, "index.html")

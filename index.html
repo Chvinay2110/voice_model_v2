@@ -1791,22 +1791,23 @@
       // ── Real-Time EventSource for Reassignments ───────────────────────────
       function setupEventSource() {
         if (!window.EventSource) return;
-        const es = new EventSource('/api/stream-events');
-        es.addEventListener('tag_updated', (e) => {
-          try {
-            const data = JSON.parse(e.data);
-            if (data.turn_order && data.tagged_as) {
-              reassignTurnToSpeaker(data.turn_order, data.tagged_as);
-            }
-          } catch(err) {}
-        });
-        es.addEventListener('users_updated', () => {
-          fetch('/api/registered-users').then(r => r.json()).then(d => { registeredUsers = d.users || []; });
-        });
-        es.onerror = () => {
-          es.close();
-          setTimeout(setupEventSource, 3000);
-        };
+        try {
+          const es = new EventSource('/api/stream-events');
+          es.addEventListener('tag_updated', (e) => {
+            try {
+              const data = JSON.parse(e.data);
+              if (data.turn_order && data.tagged_as) {
+                reassignTurnToSpeaker(data.turn_order, data.tagged_as);
+              }
+            } catch(err) {}
+          });
+          es.addEventListener('users_updated', () => {
+            fetch('/api/registered-users').then(r => r.json()).then(d => { registeredUsers = d.users || []; });
+          });
+          es.onerror = () => {
+            es.close();
+          };
+        } catch(e) {}
       }
       setupEventSource();
 
