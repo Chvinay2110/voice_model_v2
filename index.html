@@ -779,7 +779,6 @@
       <span class="header-title">DEEBUG</span>
       <button class="btn lang-btn" id="btnEnglish">English</button>
       <button class="btn lang-btn" id="btnHindi">Hindi</button>
-      <button class="btn lang-btn" id="btnFilterPending">Pending <span class="filter-badge" id="pendingCountBadge">0</span></button>
       <div class="header-actions">
         <button class="btn" id="downloadBtn">⬇ Download</button>
         <button class="btn btn-danger" id="stopBtn">Stop</button>
@@ -1254,8 +1253,6 @@
 
         // Update speaking time chart from all finalized turns
         recalculateSpeakingChart(fTurns);
-        updatePendingCount();
-        if (isPendingFilterActive) applyPendingFilter();
 
         // Prune old audio buffers
         pruneOldTurnAudio();
@@ -1716,8 +1713,6 @@
         }
 
         recalculateSpeakingChart(finalizedTurns);
-        updatePendingCount();
-        if (isPendingFilterActive) applyPendingFilter();
       }
 
       // Auto-identify a finalized turn against registered voiceprints
@@ -1789,8 +1784,6 @@
                 }
               }
             });
-            updatePendingCount();
-            if (isPendingFilterActive) applyPendingFilter();
           }
         } catch(e) {}
       }, 1500);
@@ -1808,61 +1801,6 @@
       });
       btnHindi.addEventListener('click', () => {
         setViewMode(viewMode === 'hi' ? 'original' : 'hi');
-      });
-
-      // ── Pending Filter ────────────────────────────────────────────────────
-      const btnFilterPending = document.getElementById('btnFilterPending');
-      const pendingCountBadge = document.getElementById('pendingCountBadge');
-      let isPendingFilterActive = false;
-
-      function updatePendingCount() {
-        if (!pendingCountBadge) return;
-        let count = 0;
-        for (const turn of Object.values(finalizedTurns)) {
-          if (!turn || !turn.speakerId) continue;
-          const sid = String(turn.speakerId).trim().toUpperCase();
-          const sName = speakerName(turn.speakerId).trim().toLowerCase();
-          const isRealUser = turn.speakerId.startsWith('USR_') || turn.voiceTagged;
-          if (!isRealUser || sid === 'PENDING' || sName.includes('pending')) {
-            count++;
-          }
-        }
-        pendingCountBadge.textContent = count;
-      }
-
-      function applyPendingFilter() {
-        btnFilterPending.classList.toggle('active', isPendingFilterActive);
-
-        for (const [sid, box] of Object.entries(speakerBoxes)) {
-          let hasVisibleTurn = false;
-          const turnLines = box.bodyEl.querySelectorAll('.turn-line');
-          turnLines.forEach(lineEl => {
-            if (!isPendingFilterActive) {
-              lineEl.style.display = '';
-              hasVisibleTurn = true;
-            } else {
-              const ft = Object.values(finalizedTurns).find(t => t.turnEl === lineEl);
-              const isRealUser = ft && (ft.speakerId.startsWith('USR_') || ft.voiceTagged);
-              if (!isRealUser) {
-                lineEl.style.display = '';
-                hasVisibleTurn = true;
-              } else {
-                lineEl.style.display = 'none';
-              }
-            }
-          });
-
-          if (isPendingFilterActive) {
-            box.boxEl.style.display = hasVisibleTurn ? 'flex' : 'none';
-          } else {
-            box.boxEl.style.display = 'flex';
-          }
-        }
-      }
-
-      btnFilterPending.addEventListener('click', () => {
-        isPendingFilterActive = !isPendingFilterActive;
-        applyPendingFilter();
       });
 
       // ── AI ANALYSIS SIDEBAR ────────────────────────────────────────────────
