@@ -700,7 +700,25 @@
             }
           });
 
+          // Sync options into all turn cards
+          updateAllSelectDropdowns();
+
         } catch (e) {}
+      }
+
+      function updateAllSelectDropdowns() {
+        turnsContainer.querySelectorAll('.turn-card').forEach(card => {
+          const selectEl = card.querySelector('.turn-select');
+          if (selectEl && document.activeElement !== selectEl) {
+            const currentVal = selectEl.value;
+            const newHtml = buildSelectOptions(currentVal);
+            if (selectEl.dataset.cachedHtml !== newHtml) {
+              selectEl.innerHTML = newHtml;
+              selectEl.dataset.cachedHtml = newHtml;
+              if (currentVal) selectEl.value = currentVal;
+            }
+          }
+        });
       }
 
       // ── Poll Turns (In-Place Updates - ZERO FLICKERING) ────────────────────
@@ -851,11 +869,10 @@
       btnClearTurns.addEventListener('click', async () => {
         if (!confirm('Clear all meeting turns?')) return;
         try {
-          await fetch('/api/clear-all', { method: 'POST' });
+          await fetch('/api/clear-turns', { method: 'POST' });
           turnsContainer.innerHTML = '';
           turnsContainer.appendChild(emptyTurns);
           turnsCount.textContent = '0';
-          await pollUsers();
           await pollTurns();
         } catch (e) {}
       });
@@ -883,6 +900,7 @@
           es.addEventListener('turn_update', () => { pollTurns(); });
           es.addEventListener('tag_updated', () => { pollTurns(); pollUsers(); });
           es.addEventListener('users_updated', () => { pollUsers(); pollTurns(); });
+          es.addEventListener('turns_cleared', () => { pollTurns(); });
           es.addEventListener('cleared', () => { pollTurns(); pollUsers(); });
           es.onerror = () => {
             es.close();

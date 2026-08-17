@@ -538,6 +538,16 @@ def api_clear_voiceprints():
     return jsonify(res)
 
 
+@app.route("/api/clear-turns", methods=["POST"])
+def api_clear_turns():
+    """Clear ONLY turns and sentence transcripts.
+    PRESERVES all registered user profiles, avatars, and voiceprint centroids in memory and SQLite."""
+    turn_store.clear()
+    db.clear_all_turns()
+    broadcast_sse("turns_cleared", {})
+    return jsonify({"status": "turns_cleared", "turns_count": 0})
+
+
 @app.route("/api/clear-all", methods=["POST"])
 def api_clear_all():
     turn_store.clear()
@@ -695,19 +705,26 @@ def api_tag_turn_from_admin():
                 "tagged_as": None,
             }
             turn_store[turn_order] = entry
-
-    if not entry or not entry.get("audio_b64"):
-        return jsonify({"error": f"No audio stored for turn {turn_order}"}), 404
+        else:
+            entry = {
+                "audio_b64": None,
+                "embedding": None,
+                "text": "",
+                "speaker_label": "A",
+                "tagged_as": None,
+            }
+            turn_store[turn_order] = entry
 
     try:
-        if entry.get("embedding") is None:
+        if entry.get("embedding") is None and entry.get("audio_b64"):
             pcm = _decode_pcm_base64(entry["audio_b64"])
             if len(pcm) >= int(0.3 * 16000):
                 entry["embedding"] = speaker_id_engine.extract_embedding(pcm)
 
         entry["tagged_as"] = speaker_name
         db.update_turn_tag(turn_order, speaker_name)
-        _rebuild_all_centroids()
+        if entry.get("embedding") is not None:
+            _rebuild_all_centroids()
 
         # Instant SSE broadcast
         broadcast_sse("tag_updated", {"turn_order": turn_order, "tagged_as": speaker_name})
