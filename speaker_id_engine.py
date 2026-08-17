@@ -2,7 +2,7 @@
 speaker_id_engine.py
 
 ECAPA-TDNN voiceprint engine with dynamic centroid learning, user management,
-and profile avatar support.
+and SQLite persistence.
 """
 
 import logging
@@ -12,6 +12,8 @@ from typing import Dict, List, Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
+
+import db
 
 log = logging.getLogger("speaker_id_engine")
 warnings.filterwarnings("ignore")
@@ -44,12 +46,27 @@ def _load_model():
 
 
 # ── Multi-Sample User Profiles ───────────────────────────────────────────────
-# _profiles[name] = {
-#     "embeddings": [tensor(192,), ...],  # all sample embeddings currently assigned
-#     "centroid": tensor(192,) | None,     # normalized average embedding
-#     "avatar_b64": str | None,             # base64 profile photo / avatar
-# }
 _profiles: Dict[str, dict] = {}
+
+
+def init_profiles_from_db():
+    """Load profiles and centroid embeddings from SQLite database."""
+    global _profiles
+    db.init_db()
+    db_profiles = db.get_all_profiles()
+    for p in db_profiles:
+        name = p["name"]
+        centroid_tensor = None
+        if p.get("centroid"):
+            centroid_tensor = torch.tensor(p["centroid"], dtype=torch.float32)
+            centroid_tensor = F.normalize(centroid_tensor, p=2, dim=-1)
+
+        _profiles[name] = {
+            "embeddings": [centroid_tensor] if centroid_tensor is not None else [],
+            "centroid": centroid_tensor,
+            "avatar_b64": p.get("avatar_b64"),
+        }
+    log.info("Loaded %d profiles from SQLite database.", len(_profiles))
 
 
 def extract_embedding(pcm_float32_16k: np.ndarray) -> torch.Tensor:
@@ -76,6 +93,16 @@ def create_user(speaker_name: str, avatar_b64: Optional[str] = None) -> dict:
         log.info("Created user profile: '%s'", name)
     elif avatar_b64:
         _profiles[name]["avatar_b64"] = avatar_b64
+
+    # Save to SQLite
+    centroid_list = _profiles[name]["centroid"].tolist() if _profiles[name]["centroid"] is not None else None
+    db.upsert_profile(
+        name=name,
+        avatar_b64=_profiles[name].get("avatar_b64"),
+        samples_count=len(_profiles[name]["embeddings"]),
+        centroid_list=centroid_list,
+    )
+
     return {
         "speaker": name,
         "samples_count": len(_profiles[name]["embeddings"]),
@@ -93,6 +120,13 @@ def set_user_avatar(speaker_name: str, avatar_b64: str) -> dict:
         create_user(name, avatar_b64=avatar_b64)
     else:
         _profiles[name]["avatar_b64"] = avatar_b64
+        centroid_list = _profiles[name]["centroid"].tolist() if _profiles[name]["centroid"] is not None else None
+        db.upsert_profile(
+            name=name,
+            avatar_b64=avatar_b64,
+            samples_count=len(_profiles[name]["embeddings"]),
+            centroid_list=centroid_list,
+        )
     return {"speaker": name, "avatar_b64": avatar_b64}
 
 
@@ -102,6 +136,7 @@ def delete_user(speaker_name: str) -> dict:
     if name in _profiles:
         del _profiles[name]
         log.info("Deleted user profile: '%s'", name)
+    db.delete_profile(name)
     return {"speaker": name, "status": "deleted"}
 
 
@@ -118,6 +153,14 @@ def sync_all_user_centroids(speaker_to_embeddings: Dict[str, List[torch.Tensor]]
             _profiles[name]["embeddings"] = []
             _profiles[name]["centroid"] = None
 
+        centroid_list = _profiles[name]["centroid"].tolist() if _profiles[name]["centroid"] is not None else None
+        db.upsert_profile(
+            name=name,
+            avatar_b64=_profiles[name].get("avatar_b64"),
+            samples_count=len(_profiles[name]["embeddings"]),
+            centroid_list=centroid_list,
+        )
+
     for name, embs in speaker_to_embeddings.items():
         if name and name not in _profiles:
             create_user(name)
@@ -126,32 +169,12 @@ def sync_all_user_centroids(speaker_to_embeddings: Dict[str, List[torch.Tensor]]
                 stacked = torch.stack(embs, dim=0)
                 mean_emb = torch.mean(stacked, dim=0)
                 _profiles[name]["centroid"] = F.normalize(mean_emb, p=2, dim=-1)
-
-
-def register_voiceprint(speaker_name: str, pcm_float32_16k: np.ndarray) -> dict:
-    """Add a voice sample to a speaker's profile and recompute their centroid."""
-    name = speaker_name.strip()
-    if not name:
-        raise ValueError("Speaker name cannot be empty")
-
-    if name not in _profiles:
-        create_user(name)
-
-    emb = extract_embedding(pcm_float32_16k)
-    profile = _profiles[name]
-    profile["embeddings"].append(emb)
-
-    stacked = torch.stack(profile["embeddings"], dim=0)
-    mean_emb = torch.mean(stacked, dim=0)
-    profile["centroid"] = F.normalize(mean_emb, p=2, dim=-1)
-
-    return {
-        "speaker": name,
-        "status": "registered",
-        "samples_count": len(profile["embeddings"]),
-        "embedding_dim": 192,
-        "avatar_b64": profile.get("avatar_b64"),
-    }
+                db.upsert_profile(
+                    name=name,
+                    avatar_b64=_profiles[name].get("avatar_b64"),
+                    samples_count=len(_profiles[name]["embeddings"]),
+                    centroid_list=_profiles[name]["centroid"].tolist(),
+                )
 
 
 def identify_embedding(test_emb: torch.Tensor, threshold: float = 0.50) -> dict:
@@ -215,5 +238,6 @@ def get_users() -> List[str]:
 def clear_session():
     """Clear all user profiles and voiceprints."""
     _profiles.clear()
+    db.clear_all_profiles()
     log.info("All user profiles & voiceprints cleared.")
     return {"status": "cleared"}

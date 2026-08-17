@@ -875,11 +875,26 @@
         } catch (e) {}
       });
 
-      // ── Start Polling ─────────────────────────────────────────────────────
+      // ── Real-Time EventSource (Sub-Millisecond Instant Updates) ───────────
+      function setupEventSource() {
+        if (!window.EventSource) return;
+        const es = new EventSource('/api/stream-events');
+        es.addEventListener('turn_update', () => { pollTurns(); });
+        es.addEventListener('tag_updated', () => { pollTurns(); pollUsers(); });
+        es.addEventListener('users_updated', () => { pollUsers(); pollTurns(); });
+        es.addEventListener('cleared', () => { pollTurns(); pollUsers(); });
+        es.onerror = () => {
+          es.close();
+          setTimeout(setupEventSource, 3000);
+        };
+      }
+      setupEventSource();
+
+      // ── Initial & Fallback Polling ─────────────────────────────────────────
       pollUsers();
       pollTurns();
-      setInterval(pollTurns, 2000);
-      setInterval(pollUsers, 3500);
+      setInterval(pollTurns, 3000);
+      setInterval(pollUsers, 4000);
     })();
   </script>
 </body>
