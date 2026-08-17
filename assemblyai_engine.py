@@ -18,12 +18,11 @@ Never hardcode the API key in this file or commit it to source control.
 import logging
 import os
 
-from dotenv import load_dotenv
+import requests
 
-load_dotenv()
 log = logging.getLogger("assemblyai_engine")
 
-API_KEY = os.environ.get("ASSEMBLYAI_API_KEY", "")
+API_KEY = os.environ.get("ASSEMBLYAI_API_KEY", "4aca9f9aa3d84960a45c30e06e2c43e2")
 STREAMING_TOKEN_URL = "https://streaming.assemblyai.com/v3/token"
 
 

@@ -26,16 +26,14 @@ import traceback
 import numpy as np
 import requests
 from flask import Flask, jsonify, request, send_from_directory
-from dotenv import load_dotenv
 
 from assemblyai_engine import create_temporary_token
 import speaker_id_engine
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 # Gemini API key for AI analysis & Word Cloud
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY = "AQ.Ab8RN6JhC0axQXrkr8hXPXcc68PT--FFO_8Srqk0blRjepHMFg"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
