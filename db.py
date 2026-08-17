@@ -17,7 +17,9 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meetings.db"
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, timeout=10.0)
+    conn = sqlite3.connect(DB_PATH, timeout=20.0)
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     conn.row_factory = sqlite3.Row
     return conn
 

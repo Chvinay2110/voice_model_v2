@@ -891,11 +891,11 @@
       }
       setupEventSource();
 
-      // ── Initial & Fallback Polling ─────────────────────────────────────────
+      // ── Initial & Fallback Polling (1.2s fast sync) ─────────────────────────
       pollUsers();
       pollTurns();
-      setInterval(pollTurns, 3000);
-      setInterval(pollUsers, 4000);
+      setInterval(pollTurns, 1200);
+      setInterval(pollUsers, 2500);
     })();
   </script>
 </body>

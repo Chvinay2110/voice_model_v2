@@ -1623,8 +1623,7 @@
       let registeredUsers = [];
 
       async function uploadTurnAudioToBackend(turnOrder, text, speakerId, explicitAudioB64) {
-        const audioB64 = explicitAudioB64 || getTurnAudioBase64(turnOrder);
-        if (!audioB64) return;
+        const audioB64 = explicitAudioB64 || getTurnAudioBase64(turnOrder) || '';
         try {
           await fetch('/api/store-turn-audio', {
             method: 'POST',
