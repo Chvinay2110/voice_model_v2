@@ -557,7 +557,48 @@ def _rebuild_all_centroids():
                 grouped[speaker] = []
             grouped[speaker].append(emb)
     speaker_id_engine.sync_all_user_centroids(grouped)
-    return grouped
+from concurrent.futures import ThreadPoolExecutor
+
+_bg_pool = ThreadPoolExecutor(max_workers=2)
+
+
+def _process_turn_embedding_async(turn_order, audio_b64):
+    if not audio_b64:
+        return
+    try:
+        pcm = _decode_pcm_base64(audio_b64)
+        if len(pcm) < int(0.3 * 16000):
+            return
+        emb = speaker_id_engine.extract_embedding(pcm)
+        id_res = speaker_id_engine.identify_embedding(emb)
+        scores = id_res.get("scores", {})
+        predicted_speaker = id_res.get("top_match") or id_res.get("winner")
+        predicted_confidence = id_res.get("confidence_pct", 0.0)
+
+        entry = turn_store.get(turn_order)
+        if entry:
+            entry["embedding"] = emb
+            entry["predicted_speaker"] = predicted_speaker
+            entry["predicted_confidence"] = predicted_confidence
+            entry["scores"] = scores
+            if predicted_speaker and predicted_confidence >= 50.0 and not entry.get("tagged_as"):
+                entry["tagged_as"] = predicted_speaker
+                db.update_turn_tag(turn_order, predicted_speaker)
+                _rebuild_all_centroids()
+                broadcast_sse("tag_updated", {"turn_order": turn_order, "tagged_as": predicted_speaker})
+            else:
+                db.upsert_turn(
+                    turn_order=turn_order,
+                    text=entry["text"],
+                    speaker_label=entry["speaker_label"],
+                    audio_b64=audio_b64,
+                    tagged_as=entry.get("tagged_as"),
+                    predicted_speaker=predicted_speaker,
+                    predicted_confidence=predicted_confidence,
+                )
+                broadcast_sse("turn_update", {"turn_order": turn_order, "text": entry["text"], "tagged_as": entry.get("tagged_as")})
+    except Exception:
+        pass
 
 
 @app.route("/api/store-turn-audio", methods=["POST"])
@@ -572,64 +613,43 @@ def api_store_turn_audio():
     text = data.get("text", "")
     speaker_label = data.get("speaker_label", "A")
 
-    emb = None
-    predicted_speaker = None
-    predicted_confidence = 0.0
-    scores = {}
-
-    if audio_b64:
-        try:
-            pcm = _decode_pcm_base64(audio_b64)
-            if len(pcm) >= int(0.3 * 16000):
-                emb = speaker_id_engine.extract_embedding(pcm)
-                id_res = speaker_id_engine.identify_embedding(emb)
-                scores = id_res.get("scores", {})
-                predicted_speaker = id_res.get("top_match") or id_res.get("winner")
-                predicted_confidence = id_res.get("confidence_pct", 0.0)
-        except Exception:
-            pass
-
-    tagged_as = predicted_speaker if (predicted_speaker and predicted_confidence >= 50.0) else None
-
-    # Write to SQLite database
+    # 1. Instant SQLite write in <1ms
     db.upsert_turn(
         turn_order=turn_order,
         text=text,
         speaker_label=speaker_label,
-        audio_b64=audio_b64,
-        tagged_as=tagged_as,
-        predicted_speaker=predicted_speaker,
-        predicted_confidence=predicted_confidence,
+        audio_b64=audio_b64 if audio_b64 else None,
+        tagged_as=None,
+        predicted_speaker=None,
+        predicted_confidence=0.0,
     )
 
     turn_store[turn_order] = {
         "audio_b64": audio_b64,
-        "embedding": emb,
+        "embedding": None,
         "text": text,
         "speaker_label": speaker_label,
-        "predicted_speaker": predicted_speaker,
-        "predicted_confidence": predicted_confidence,
-        "scores": scores,
-        "tagged_as": tagged_as,
+        "predicted_speaker": None,
+        "predicted_confidence": 0.0,
+        "scores": {},
+        "tagged_as": None,
     }
 
-    if len(turn_store) > 150:
-        oldest = sorted(turn_store.keys())[: len(turn_store) - 150]
+    if len(turn_store) > 200:
+        oldest = sorted(turn_store.keys())[: len(turn_store) - 200]
         for k in oldest:
             del turn_store[k]
 
-    if tagged_as and emb is not None:
-        _rebuild_all_centroids()
+    # 2. Instant Real-time Push to Admin Panel
+    broadcast_sse("turn_update", {"turn_order": turn_order, "text": text, "tagged_as": None})
 
-    # Instant Real-time Push to Admin Panel
-    broadcast_sse("turn_update", {"turn_order": turn_order, "text": text, "tagged_as": tagged_as})
+    # 3. Offload voiceprint extraction to background thread
+    if audio_b64:
+        _bg_pool.submit(_process_turn_embedding_async, turn_order, audio_b64)
 
     return jsonify({
         "status": "stored",
         "turn_order": turn_order,
-        "predicted_speaker": predicted_speaker,
-        "predicted_confidence": predicted_confidence,
-        "scores": scores,
     })
 
 
