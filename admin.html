@@ -244,19 +244,50 @@
     }
 
     .create-user-section {
-      padding: 14px 20px;
+      padding: 12px 18px;
       border-bottom: 1px solid var(--border);
       display: flex;
-      gap: 8px;
+      align-items: center;
+      gap: 12px;
       background: #fafbfc;
+    }
+
+    .new-avatar-picker-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1.5px dashed #cbd5e1;
+      background: #f1f5f9;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+      transition: all .15s ease;
+      padding: 0;
+    }
+    .new-avatar-picker-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: #eef2ff;
+    }
+
+    .new-avatar-preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
     }
 
     .create-user-input {
       flex: 1;
-      padding: 7px 12px;
-      font-size: 13px;
+      padding: 9px 14px;
+      font-size: 13.5px;
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 8px;
       outline: none;
       font-family: inherit;
     }
@@ -267,52 +298,71 @@
       padding: 16px 20px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       overflow-y: auto;
     }
 
     .profile-card {
-      padding: 10px 14px;
+      padding: 12px 14px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       background: var(--surface);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .profile-card:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
 
     .profile-avatar {
-      width: 36px;
-      height: 36px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       background: #e0e7ff;
       color: var(--accent);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 13px;
+      font-size: 16px;
       font-weight: 700;
       flex-shrink: 0;
-      overflow: hidden;
       cursor: pointer;
       position: relative;
-      border: 1px solid var(--border);
+      border: 2px solid #ffffff;
+      outline: 1.5px solid var(--border);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transition: transform .12s, outline-color .12s;
     }
-    .profile-avatar:hover::after {
-      content: '📷';
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
+    .profile-avatar:hover {
+      outline-color: var(--accent);
+      transform: scale(1.06);
     }
 
     .profile-avatar-img {
       width: 100%;
       height: 100%;
+      border-radius: 50%;
       object-fit: cover;
+    }
+
+    .avatar-upload-icon-badge {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--surface);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      pointer-events: none;
     }
 
     .profile-info {
@@ -419,8 +469,9 @@
 <body>
   <div class="admin-app">
 
-    <!-- Hidden file input for avatar upload -->
+    <!-- Hidden file inputs for avatar upload -->
     <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
+    <input type="file" id="newUserAvatarFileInput" accept="image/*" style="display:none">
 
     <!-- HEADER -->
     <header>
@@ -460,6 +511,13 @@
         </div>
 
         <div class="create-user-section">
+          <button type="button" class="new-avatar-picker-btn" id="btnPickNewAvatar" title="Upload profile picture">
+            <svg id="newAvatarIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            <img id="newAvatarPreviewImg" class="new-avatar-preview-img" style="display:none" alt="Avatar Preview">
+          </button>
           <input class="create-user-input" id="newUserNameInput" placeholder="New user name (e.g. Raj)">
           <button class="btn btn-primary" id="btnCreateUser">Add</button>
         </div>
@@ -492,6 +550,10 @@
       const profilesCount = document.getElementById('profilesCount');
       const footerStatus = document.getElementById('footerStatus');
       const avatarFileInput = document.getElementById('avatarFileInput');
+      const newUserAvatarFileInput = document.getElementById('newUserAvatarFileInput');
+      const btnPickNewAvatar = document.getElementById('btnPickNewAvatar');
+      const newAvatarIcon = document.getElementById('newAvatarIcon');
+      const newAvatarPreviewImg = document.getElementById('newAvatarPreviewImg');
 
       const newUserNameInput = document.getElementById('newUserNameInput');
       const btnCreateUser = document.getElementById('btnCreateUser');
@@ -503,6 +565,7 @@
       let userNames = [];
       let registeredUsers = [];
       let activeUploadTargetUser = null;
+      let newUserAvatarB64 = null;
       let isAdminPendingFilterActive = false;
 
       function escapeHtml(s) {
@@ -530,18 +593,21 @@
         });
       }
 
-      // ── Avatar Upload Handler ──────────────────────────────────────────────
-      avatarFileInput.addEventListener('change', async () => {
-        const file = avatarFileInput.files[0];
-        if (!file || !activeUploadTargetUser) return;
+      // ── New User Avatar Picker ─────────────────────────────────────────────
+      btnPickNewAvatar.addEventListener('click', () => {
+        newUserAvatarFileInput.click();
+      });
 
-        // Resize and convert to data URL via canvas
+      newUserAvatarFileInput.addEventListener('change', () => {
+        const file = newUserAvatarFileInput.files[0];
+        if (!file) return;
+
         const reader = new FileReader();
         reader.onload = function(e) {
           const img = new Image();
-          img.onload = async function() {
+          img.onload = function() {
             const canvas = document.createElement('canvas');
-            const maxDim = 160;
+            const maxDim = 400;
             let w = img.width, h = img.height;
             if (w > h) {
               if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
@@ -552,7 +618,48 @@
             canvas.height = h;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, w, h);
-            const avatarB64 = canvas.toDataURL('image/jpeg', 0.85);
+            newUserAvatarB64 = canvas.toDataURL('image/jpeg', 0.92);
+
+            newAvatarPreviewImg.src = newUserAvatarB64;
+            newAvatarPreviewImg.style.display = 'block';
+            newAvatarIcon.style.display = 'none';
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+        newUserAvatarFileInput.value = '';
+      });
+
+      function resetNewUserAvatar() {
+        newUserAvatarB64 = null;
+        newAvatarPreviewImg.src = '';
+        newAvatarPreviewImg.style.display = 'none';
+        newAvatarIcon.style.display = 'block';
+      }
+
+      // ── Avatar Upload Handler for Existing Profiles ─────────────────────────
+      avatarFileInput.addEventListener('change', async () => {
+        const file = avatarFileInput.files[0];
+        if (!file || !activeUploadTargetUser) return;
+
+        // Resize and convert to data URL via canvas
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = async function() {
+            const canvas = document.createElement('canvas');
+            const maxDim = 400;
+            let w = img.width, h = img.height;
+            if (w > h) {
+              if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            } else {
+              if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const avatarB64 = canvas.toDataURL('image/jpeg', 0.92);
 
             try {
               const resp = await fetch('/api/upload-avatar', {
@@ -577,13 +684,17 @@
         const name = newUserNameInput.value.trim();
         if (!name) return;
         try {
+          const payload = { name };
+          if (newUserAvatarB64) payload.avatar_b64 = newUserAvatarB64;
+
           const resp = await fetch('/api/create-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
+            body: JSON.stringify(payload)
           });
           if (resp.ok) {
             newUserNameInput.value = '';
+            resetNewUserAvatar();
             await pollUsers();
             footerStatus.textContent = `User "${name}" created`;
           }
@@ -623,7 +734,13 @@
           profilesCount.textContent = registeredUsers.length;
 
           if (registeredUsers.length === 0) {
+            Array.from(profilesList.children).forEach(child => {
+              if (child.id && child.id.startsWith('p-')) {
+                child.remove();
+              }
+            });
             if (!emptyProfiles.parentNode) profilesList.appendChild(emptyProfiles);
+            updateAllSelectDropdowns();
             return;
           }
           if (emptyProfiles.parentNode) emptyProfiles.remove();
@@ -643,12 +760,24 @@
               ? `<img class="profile-avatar-img" src="${u.avatar_b64}" alt="${escapeHtml(u.name)}">`
               : initials;
 
+            const badgeHtml = `
+              <div class="avatar-upload-icon-badge" title="Upload photo">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+              </div>
+            `;
+
             if (!card) {
               card = document.createElement('div');
               card.className = 'profile-card';
               card.id = safeId;
               card.innerHTML = `
-                <div class="profile-avatar" title="Click to upload picture">${avatarContent}</div>
+                <div class="profile-avatar" title="Click to upload/change photo">
+                  <span class="avatar-inner">${avatarContent}</span>
+                  ${badgeHtml}
+                </div>
                 <div class="profile-info">
                   <div class="profile-name">${escapeHtml(u.name)}</div>
                   <div class="profile-samples">${samplesText}</div>
@@ -677,17 +806,17 @@
               const dotEl = card.querySelector('.profile-status-dot');
               if (dotEl) dotEl.className = 'profile-status-dot ' + (hasVp ? 'active' : '');
 
-              const avatarEl = card.querySelector('.profile-avatar');
-              if (avatarEl) {
+              const avatarInner = card.querySelector('.avatar-inner');
+              if (avatarInner) {
                 if (u.avatar_b64) {
-                  let img = avatarEl.querySelector('.profile-avatar-img');
+                  let img = avatarInner.querySelector('.profile-avatar-img');
                   if (!img) {
-                    avatarEl.innerHTML = `<img class="profile-avatar-img" src="${u.avatar_b64}" alt="${escapeHtml(u.name)}">`;
+                    avatarInner.innerHTML = `<img class="profile-avatar-img" src="${u.avatar_b64}" alt="${escapeHtml(u.name)}">`;
                   } else if (img.src !== u.avatar_b64) {
                     img.src = u.avatar_b64;
                   }
-                } else if (avatarEl.querySelector('.profile-avatar-img')) {
-                  avatarEl.textContent = initials;
+                } else if (avatarInner.querySelector('.profile-avatar-img')) {
+                  avatarInner.textContent = initials;
                 }
               }
             }
@@ -898,6 +1027,7 @@
         try {
           const es = new EventSource('/api/stream-events');
           es.addEventListener('turn_update', () => { pollTurns(); });
+          es.addEventListener('turns_updated', () => { pollTurns(); });
           es.addEventListener('tag_updated', () => { pollTurns(); pollUsers(); });
           es.addEventListener('users_updated', () => { pollUsers(); pollTurns(); });
           es.addEventListener('turns_cleared', () => { pollTurns(); });

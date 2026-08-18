@@ -69,10 +69,16 @@ def init_profiles_from_db():
     log.info("Loaded %d profiles from SQLite database.", len(_profiles))
 
 
+from audio_utils import clean_audio_for_speaker_id
+
+
 def extract_embedding(pcm_float32_16k: np.ndarray) -> torch.Tensor:
-    """Extract a normalized 192-d embedding from 16kHz float32 mono PCM."""
+    """Clean audio with office noise baseline and extract normalized 192-d embedding."""
+    cleaned_pcm = clean_audio_for_speaker_id(pcm_float32_16k)
+    if len(cleaned_pcm) < int(0.3 * 16000):
+        cleaned_pcm = pcm_float32_16k
     model = _load_model()
-    tensor = torch.tensor(pcm_float32_16k, dtype=torch.float32).unsqueeze(0)
+    tensor = torch.tensor(cleaned_pcm, dtype=torch.float32).unsqueeze(0)
     with torch.no_grad():
         emb = model.encode_batch(tensor)
         emb = F.normalize(emb.squeeze(), p=2, dim=-1)
@@ -175,6 +181,29 @@ def sync_all_user_centroids(speaker_to_embeddings: Dict[str, List[torch.Tensor]]
                     samples_count=len(_profiles[name]["embeddings"]),
                     centroid_list=_profiles[name]["centroid"].tolist(),
                 )
+
+
+def update_user_centroid(name: str, embeddings: list):
+    """Update a single user's centroid from a list of embeddings."""
+    if name not in _profiles:
+        return
+
+    if embeddings:
+        _profiles[name]["embeddings"] = embeddings
+        stacked = torch.stack(embeddings, dim=0)
+        mean_emb = torch.mean(stacked, dim=0)
+        _profiles[name]["centroid"] = F.normalize(mean_emb, p=2, dim=-1)
+    else:
+        _profiles[name]["embeddings"] = []
+        _profiles[name]["centroid"] = None
+
+    centroid_list = _profiles[name]["centroid"].tolist() if _profiles[name]["centroid"] is not None else None
+    db.upsert_profile(
+        name=name,
+        avatar_b64=_profiles[name].get("avatar_b64"),
+        samples_count=len(_profiles[name]["embeddings"]),
+        centroid_list=centroid_list,
+    )
 
 
 def identify_embedding(test_emb: torch.Tensor, threshold: float = 0.50) -> dict:

@@ -322,241 +322,284 @@
       font-size: 13px;
     }
 
-    /* ── AI ANALYSIS SIDEBAR (VS Code style) ── */
+    /* ── AI ANALYSIS SIDEBAR (Right 25% Width - Full Scrollable) ── */
     #aiSidebar {
       position: fixed;
       right: 0;
       top: 0;
       bottom: 0;
-      width: 45vw;
-      min-width: 320px;
+      height: 100vh;
+      width: 25vw;
+      min-width: 280px;
+      max-width: 380px;
       z-index: 400;
-      background: #1e1e2e;
-      color: #cdd6f4;
+      background: var(--surface);
+      color: var(--text);
       display: flex;
       flex-direction: column;
-      border-left: 1px solid #313244;
+      border-left: 1px solid var(--border);
+      box-shadow: -4px 0 20px rgba(0, 0, 0, .06);
       transform: translateX(100%);
       transition: transform .28s cubic-bezier(.4, 0, .2, 1);
       font-family: 'Inter', system-ui, sans-serif;
+      overflow: hidden;
     }
 
     #aiSidebar.open {
       transform: translateX(0);
     }
 
-    /* push main content right-margin when sidebar is open */
+    /* push main content when sidebar is open */
     #app-page.sidebar-open .main-body {
-      padding-right: 45vw;
+      padding-right: 25vw;
       transition: padding-right .28s cubic-bezier(.4, 0, .2, 1);
     }
 
     .sb-header {
       display: flex;
       align-items: center;
-      padding: 14px 16px;
-      border-bottom: 1px solid #313244;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
       gap: 10px;
-      background: #181825;
+      background: var(--surface);
+      flex-shrink: 0;
     }
 
     .sb-title {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
-      color: #cba6f7;
+      color: var(--text);
       flex: 1;
-      letter-spacing: .3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sb-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #16a34a;
+      display: inline-block;
+      box-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
     }
 
     .sb-close {
-      background: none;
+      background: transparent;
       border: none;
       cursor: pointer;
-      color: #6c7086;
+      color: var(--muted);
       font-size: 20px;
       line-height: 1;
-      padding: 2px 6px;
+      padding: 4px 8px;
       border-radius: 6px;
+      transition: all .12s;
     }
 
     .sb-close:hover {
-      background: #313244;
-      color: #cdd6f4;
-    }
-
-    .sb-settings {
-      padding: 12px 16px;
-      border-bottom: 1px solid #313244;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      background: #181825;
-    }
-
-    .sb-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .sb-label {
-      font-size: 11px;
-      color: #6c7086;
-      text-transform: uppercase;
-      letter-spacing: .6px;
-      white-space: nowrap;
-    }
-
-    .sb-select,
-    .sb-input {
-      flex: 1;
-      background: #313244;
-      border: 1px solid #45475a;
-      color: #cdd6f4;
-      border-radius: 7px;
-      padding: 7px 10px;
-      font-size: 13px;
-      font-family: inherit;
-      outline: none;
-    }
-
-    .sb-select:focus,
-    .sb-input:focus {
-      border-color: #cba6f7;
-    }
-
-    .sb-btn {
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 7px 14px;
-      border-radius: 7px;
-      cursor: pointer;
-      border: none;
-      white-space: nowrap;
-    }
-
-    .sb-btn-primary {
-      background: #cba6f7;
-      color: #1e1e2e;
-    }
-
-    .sb-btn-primary:hover {
-      background: #d4b2fa;
-    }
-
-    .sb-btn-ghost {
-      background: #313244;
-      color: #cdd6f4;
-    }
-
-    .sb-btn-ghost:hover {
-      background: #45475a;
+      background: var(--bg);
+      color: var(--text);
     }
 
     .sb-body {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
-      padding: 16px;
+      overflow-x: hidden;
+      padding: 14px 14px 32px 14px;
       display: flex;
       flex-direction: column;
       gap: 14px;
+      background: var(--bg);
       scrollbar-width: thin;
-      scrollbar-color: #45475a transparent;
+      scrollbar-color: var(--border) transparent;
+      -webkit-overflow-scrolling: touch;
     }
 
     .sb-body::-webkit-scrollbar {
-      width: 4px;
+      width: 5px;
     }
-
     .sb-body::-webkit-scrollbar-thumb {
-      background: #45475a;
+      background: var(--border);
       border-radius: 4px;
     }
 
-    .sb-empty {
-      text-align: center;
-      color: #6c7086;
-      font-size: 13px;
-      margin: auto;
-      line-height: 1.8;
-      padding: 20px;
-    }
-
-    .sb-empty .sb-empty-icon {
-      font-size: 32px;
-      display: block;
-      margin-bottom: 10px;
-    }
-
-    .analysis-card {
-      background: #181825;
-      border: 1px solid #313244;
+    .sb-meeting-summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 10px;
-      overflow: hidden;
-      animation: sbFadeIn .2s ease;
+      padding: 14px 16px;
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+      flex-shrink: 0;
+    }
+    .sb-meeting-summary-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: var(--accent);
+      margin-bottom: 6px;
     }
 
-    @keyframes sbFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(6px);
-      }
-
-      to {
-        opacity: 1;
-        transform: none;
-      }
+    /* Speaker Card */
+    .sb-speaker-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+      transition: border-color .2s, box-shadow .2s;
+      animation: sbFadeIn .25s ease;
+      flex-shrink: 0;
     }
 
-    .analysis-card-header {
+    .sb-speaker-card.updated {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    }
+
+    .sb-spk-head {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      border-bottom: 1px solid #313244;
-      background: #11111b;
+      gap: 10px;
     }
 
-    .analysis-card-model {
+    .sb-spk-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--border);
+      background: #e0e7ff;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .sb-spk-title-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sb-spk-name {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .sb-score-badge {
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .sb-score-badge.high {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+
+    .sb-score-badge.mid {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+
+    .sb-score-badge.low {
+      background: #f1f5f9;
+      color: #64748b;
+      border: 1px solid #e2e8f0;
+    }
+
+    .sb-spk-summary {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .sb-keypoints-wrap {
+      background: #fafbfc;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      overflow: visible;
+    }
+
+    .sb-keypoints-title {
       font-size: 11px;
-      font-weight: 600;
-      color: #cba6f7;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .5px;
+      color: var(--muted);
+      margin-bottom: 6px;
     }
 
-    .analysis-card-time {
-      font-size: 11px;
-      color: #6c7086;
-    }
-
-    .analysis-card-body {
-      padding: 12px 14px;
-      font-size: 13.5px;
-      line-height: 1.7;
-      color: #cdd6f4;
-      white-space: pre-wrap;
-    }
-
-    .analysis-card.loading .analysis-card-body {
-      color: #6c7086;
-      font-style: italic;
-    }
-
-    .sb-footer {
-      padding: 12px 16px;
-      border-top: 1px solid #313244;
+    .sb-keypoints-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
       display: flex;
+      flex-direction: column;
       gap: 8px;
-      align-items: center;
-      background: #181825;
     }
 
-    .sb-auto-label {
+    .sb-keypoints-list li {
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #334155;
+      position: relative;
+      padding-left: 14px;
+      word-break: break-word;
+    }
+    .sb-keypoints-list li::before {
+      content: '•';
+      position: absolute;
+      left: 2px;
+      color: var(--accent);
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .sb-score-reason {
       font-size: 12px;
-      color: #6c7086;
-      flex: 1;
+      color: var(--muted);
+      font-style: italic;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .sb-keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .sb-keyword-tag {
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
     }
 
     /* ── SPEAKER CONTAINER (inside .transcript-col) ── */
@@ -629,41 +672,48 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 13px 18px;
+      padding: 12px 18px;
       border-bottom: 1px solid var(--border);
       background: #fafafa;
       flex-shrink: 0;
     }
 
-    .spk-dot {
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
     .spk-avatar-img {
-      width: 24px;
-      height: 24px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       object-fit: cover;
-      border: 1px solid var(--border);
+      border: 2px solid #ffffff;
+      outline: 1.5px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
       flex-shrink: 0;
+      vertical-align: middle;
+      transition: transform .15s ease;
+    }
+    .spk-avatar-img:hover {
+      transform: scale(1.08);
     }
 
     .spk-name {
-      font-size: 14px;
-      font-weight: 600;
-      flex: 1;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
       cursor: pointer;
       border-radius: 6px;
-      padding: 2px 6px;
-      margin-left: -6px;
+      padding: 3px 6px;
       transition: background .12s;
     }
 
     .spk-name:hover {
       background: var(--bg);
+    }
+
+    .spk-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: inline-block;
     }
 
     .spk-name[contenteditable="true"] {
@@ -824,20 +874,11 @@
   <!-- ── AI ANALYSIS SIDEBAR ── -->
   <div id="aiSidebar">
     <div class="sb-header">
-      <span class="sb-title">✨ AI Analysis</span>
+      <span class="sb-title"><span class="sb-pulse-dot"></span> Speaker Intelligence</span>
       <button class="sb-close" id="sbClose">×</button>
     </div>
 
-    <div class="sb-body" id="sbBody">
-      <div class="sb-empty">
-        <span class="sb-empty-icon">🧠</span>
-        Click <strong>Analyse Now</strong> to get AI insights on the live transcript.
-      </div>
-    </div>
-    <div class="sb-footer">
-      <button class="sb-btn sb-btn-primary" id="sbAnalyseNow">Analyse Now</button>
-      <span class="sb-auto-label" id="sbAutoLabel"></span>
-    </div>
+    <div class="sb-body" id="sbBody"></div>
   </div>
 
   <script>
@@ -1049,13 +1090,22 @@
         const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
         const name = 'Speaker ' + speakerId;
 
+        const foundUser = registeredUsers.find(u => 
+          (u.name || '').toLowerCase() === name.toLowerCase() ||
+          (u.name || '').toLowerCase() === speakerId.toLowerCase()
+        );
+        const avatarHtml = (foundUser && foundUser.avatar_b64)
+          ? `<img class="spk-avatar-img" src="${foundUser.avatar_b64}" alt="${escapeHtml(name)}">`
+          : '';
+
         const box = document.createElement('div');
         box.className = 'speaker-box';
         box.dataset.speaker = speakerId;
         box.innerHTML = `
       <div class="speaker-box-header">
-        <span class="spk-dot" style="background:${color}"></span>
+        ${avatarHtml}
         <span class="spk-name" title="Click to rename" contenteditable="false">${escapeHtml(name)}</span>
+        <span class="spk-dot" style="background:${color}"></span>
       </div>
       <div class="speaker-box-body"></div>
     `;
@@ -1237,7 +1287,7 @@
           rawLines.push({ time: fmtTime(), text: segText, speakerId: segSpeaker });
 
           // Store for speaking chart
-          fTurns[segTurnOrder] = { turnEl: segEl, speakerId: segSpeaker, text: segText, duration: segDuration };
+          fTurns[segTurnOrder] = { turnEl: segEl, speakerId: segSpeaker, originalSpeakerId: segSpeaker, text: segText, duration: segDuration };
 
           // Kick off background translation
           computeTranslations(segEl, segText);
@@ -1591,10 +1641,11 @@
         await setupAssemblyAIStream();
         startWatchdog();
         startWordCloudLoop();
+        startAnalysisLoop();
       }
 
       function endRecording() {
-        listening = false; stopWatchdog(); stopWordCloudLoop();
+        listening = false; stopWatchdog(); stopWordCloudLoop(); stopAnalysisLoop();
         teardownMic();
         teardownAudio();
         if (aaiSocket && aaiSocket.readyState === WebSocket.OPEN) {
@@ -1667,9 +1718,9 @@
         boxEl.dataset.speaker = customId;
         boxEl.innerHTML = `
           <div class="speaker-box-header">
-            <span class="spk-dot" style="background:${color}"></span>
             ${avatarHtml}
             <span class="spk-name" title="Click to rename" contenteditable="false">${escapeHtml(name)}</span>
+            <span class="spk-dot" style="background:${color}"></span>
           </div>
           <div class="speaker-box-body"></div>
         `;
@@ -1686,13 +1737,21 @@
         return { speakerId: customId, box: newBox };
       }
 
-      // Reassign a turn to a named speaker (moves the DOM line to the target speaker box)
-      function reassignTurnToSpeaker(turnOrder, realName) {
+      // Reassign a turn to a named speaker or raw speaker box
+      function reassignTurnToSpeaker(turnOrder, realName, isRawSpeakerId = false) {
         const ft = finalizedTurns[turnOrder];
         if (!ft || !realName) return;
 
         const oldSpeakerId = ft.speakerId;
-        const { speakerId: targetSpeakerId, box: targetBox } = getOrCreateNamedSpeakerBox(realName);
+        let targetSpeakerId, targetBox;
+        if (isRawSpeakerId) {
+          targetBox = getOrCreateSpeakerBox(realName);
+          targetSpeakerId = realName;
+        } else {
+          const res = getOrCreateNamedSpeakerBox(realName);
+          targetSpeakerId = res.speakerId;
+          targetBox = res.box;
+        }
 
         if (targetSpeakerId !== oldSpeakerId) {
           targetBox.bodyEl.appendChild(ft.turnEl);
@@ -1733,16 +1792,62 @@
           });
           if (!resp.ok) return;
           const result = await resp.json();
-          if (result.winner && fTurns[turnOrder]) {
+          const conf = result.confidence_pct || 0;
+          const matchedSpeaker = result.winner || (conf > 15.0 ? result.top_match : null);
+          if (matchedSpeaker && fTurns[turnOrder]) {
             fTurns[turnOrder].voiceTagged = true;
-            fTurns[turnOrder].voiceConfidence = result.confidence_pct + '%';
-            reassignTurnToSpeaker(turnOrder, result.winner);
+            fTurns[turnOrder].voiceConfidence = conf + '%';
+            reassignTurnToSpeaker(turnOrder, matchedSpeaker);
           }
         } catch(e) {}
       }
 
-      // Poll for admin-triggered reassignments & registered users every 1.5s
-      setInterval(async () => {
+      // ── Reusable sync helpers (no more polling) ─────────────────────────────
+
+      function updateSpeakerAvatars() {
+        for (const [sid, box] of Object.entries(speakerBoxes)) {
+          const currentName = (box.name || speakerName(sid) || '').trim().toLowerCase();
+          const u = registeredUsers.find(ru => {
+            const rname = (ru.name || '').trim().toLowerCase();
+            return rname === currentName || rname === sid.toLowerCase() || ('usr_' + rname.replace(/[^a-z0-9_]/g, '_')) === sid.toLowerCase();
+          });
+          const headerEl = box.boxEl.querySelector('.speaker-box-header');
+          if (headerEl) {
+            let avatarEl = headerEl.querySelector('.spk-avatar-img');
+            if (u && u.avatar_b64) {
+              if (!avatarEl) {
+                avatarEl = document.createElement('img');
+                avatarEl.className = 'spk-avatar-img';
+                headerEl.insertBefore(avatarEl, headerEl.querySelector('.spk-name'));
+              }
+              if (avatarEl.src !== u.avatar_b64) avatarEl.src = u.avatar_b64;
+            } else if (avatarEl) {
+              avatarEl.remove();
+            }
+          }
+        }
+      }
+
+      function syncTurnsFromServer(turns) {
+        turns.forEach(t => {
+          const ft = finalizedTurns[t.turn_order];
+          if (ft) {
+            const conf = t.predicted_confidence || 0;
+            const targetSpeaker = t.tagged_as || (conf > 15.0 ? t.predicted_speaker : null);
+            if (targetSpeaker) {
+              const currentName = speakerName(ft.speakerId);
+              if (currentName.toLowerCase() !== targetSpeaker.toLowerCase()) {
+                reassignTurnToSpeaker(t.turn_order, targetSpeaker);
+              }
+            } else if (ft.speakerId.startsWith('USR_')) {
+              const origSpk = ft.originalSpeakerId || 'A';
+              reassignTurnToSpeaker(t.turn_order, origSpk, true);
+            }
+          }
+        });
+      }
+
+      async function syncFromServer() {
         try {
           const [uResp, tResp] = await Promise.all([
             fetch('/api/registered-users'),
@@ -1751,64 +1856,83 @@
           if (uResp.ok) {
             const uData = await uResp.json();
             registeredUsers = uData.users || [];
-
-            // Update avatars in existing speaker box headers
-            for (const [sid, box] of Object.entries(speakerBoxes)) {
-              const u = registeredUsers.find(ru => (ru.name || '').toLowerCase() === box.name.toLowerCase());
-              const headerEl = box.boxEl.querySelector('.speaker-box-header');
-              if (headerEl) {
-                let avatarEl = headerEl.querySelector('.spk-avatar-img');
-                if (u && u.avatar_b64) {
-                  if (!avatarEl) {
-                    avatarEl = document.createElement('img');
-                    avatarEl.className = 'spk-avatar-img';
-                    headerEl.insertBefore(avatarEl, headerEl.querySelector('.spk-name'));
-                  }
-                  if (avatarEl.src !== u.avatar_b64) avatarEl.src = u.avatar_b64;
-                } else if (avatarEl) {
-                  avatarEl.remove();
-                }
-              }
-            }
+            updateSpeakerAvatars();
           }
           if (tResp.ok) {
             const tData = await tResp.json();
-            const turns = tData.turns || [];
-            turns.forEach(t => {
-              const ft = finalizedTurns[t.turn_order];
-              if (ft && t.tagged_as) {
-                const currentName = speakerName(ft.speakerId);
-                if (currentName.toLowerCase() !== t.tagged_as.toLowerCase()) {
-                  reassignTurnToSpeaker(t.turn_order, t.tagged_as);
-                }
-              }
-            });
+            syncTurnsFromServer(tData.turns || []);
           }
         } catch(e) {}
-      }, 3000);
+      }
 
-      // ── Real-Time EventSource for Reassignments ───────────────────────────
+      // ── Real-Time EventSource with Auto-Reconnect ─────────────────────────
       function setupEventSource() {
         if (!window.EventSource) return;
-        try {
-          const es = new EventSource('/api/stream-events');
-          es.addEventListener('tag_updated', (e) => {
-            try {
-              const data = JSON.parse(e.data);
-              if (data.turn_order && data.tagged_as) {
-                reassignTurnToSpeaker(data.turn_order, data.tagged_as);
-              }
-            } catch(err) {}
-          });
-          es.addEventListener('users_updated', () => {
-            fetch('/api/registered-users').then(r => r.json()).then(d => { registeredUsers = d.users || []; });
-          });
-          es.onerror = () => {
-            es.close();
-          };
-        } catch(e) {}
+        let retryDelay = 1000;
+        function connect() {
+          try {
+            const es = new EventSource('/api/stream-events');
+            es.addEventListener('connected', () => {
+              retryDelay = 1000;
+              syncFromServer();
+            });
+            es.addEventListener('turn_update', (e) => {
+              try {
+                const data = JSON.parse(e.data);
+                if (data.turn_order) {
+                  const conf = data.predicted_confidence || 0;
+                  const target = data.tagged_as || (conf > 15.0 ? data.predicted_speaker : null);
+                  if (target) {
+                    reassignTurnToSpeaker(data.turn_order, target);
+                  }
+                }
+              } catch(err) {}
+            });
+            es.addEventListener('tag_updated', (e) => {
+              try {
+                const data = JSON.parse(e.data);
+                if (data.turn_order) {
+                  if (data.tagged_as) {
+                    reassignTurnToSpeaker(data.turn_order, data.tagged_as);
+                  } else {
+                    const ft = finalizedTurns[data.turn_order];
+                    if (ft) reassignTurnToSpeaker(data.turn_order, ft.originalSpeakerId || 'A', true);
+                  }
+                }
+              } catch(err) {}
+            });
+            es.addEventListener('turns_updated', async () => {
+              try {
+                const resp = await fetch('/api/turns');
+                if (resp.ok) {
+                  const tData = await resp.json();
+                  syncTurnsFromServer(tData.turns || []);
+                }
+              } catch(err) {}
+            });
+            es.addEventListener('users_updated', async () => {
+              try {
+                const r = await fetch('/api/registered-users');
+                if (r.ok) {
+                  const d = await r.json();
+                  registeredUsers = d.users || [];
+                  updateSpeakerAvatars();
+                }
+              } catch(err) {}
+            });
+            es.onerror = () => {
+              es.close();
+              retryDelay = Math.min(retryDelay * 2, 30000);
+              setTimeout(connect, retryDelay);
+            };
+          } catch(e) {
+            setTimeout(connect, retryDelay);
+          }
+        }
+        connect();
       }
       setupEventSource();
+      syncFromServer();
 
 
       // ── Language toggle buttons ───────────────────────────────────────────
@@ -1825,17 +1949,22 @@
         setViewMode(viewMode === 'hi' ? 'original' : 'hi');
       });
 
-      // ── AI ANALYSIS SIDEBAR ────────────────────────────────────────────────
+      // ── AI ANALYSIS SIDEBAR & PER-SPEAKER INTELLIGENCE ────────────────────
       const aiAnalysisBtn = document.getElementById('aiAnalysisBtn');
       const aiSidebar = document.getElementById('aiSidebar');
       const sbClose = document.getElementById('sbClose');
       const sbBody = document.getElementById('sbBody');
-      const sbAnalyseNow = document.getElementById('sbAnalyseNow');
       const appPageEl = document.getElementById('app-page');
+
+      let analysisTimer = null;
+      let isAnalysing = false;
 
       function openSidebar() {
         aiSidebar.classList.add('open');
         appPageEl.classList.add('sidebar-open');
+        if (!sbBody.querySelector('.sb-speaker-card') && rawLines.length > 0) {
+          runAnalysis();
+        }
       }
       function closeSidebar() {
         aiSidebar.classList.remove('open');
@@ -1851,29 +1980,105 @@
         return rawLines.map(l => `${speakerName(l.speakerId)}: ${l.text}`).join('\n');
       }
 
-      function addAnalysisCard() {
-        sbBody.querySelector('.sb-empty')?.remove();
-        const card = document.createElement('div');
-        card.className = 'analysis-card loading';
-        card.innerHTML = `
-      <div class="analysis-card-header">
-        <span class="analysis-card-model">Gemini 2.0 Flash</span>
-        <span class="analysis-card-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-      </div>
-      <div class="analysis-card-body">Analysing transcript…</div>`;
-        sbBody.appendChild(card);
-        sbBody.scrollTop = sbBody.scrollHeight;
-        return card;
+      function getScoreBadgeClass(score) {
+        if (score >= 7.5) return 'high';
+        if (score >= 5.0) return 'mid';
+        return 'low';
+      }
+
+      function renderOrUpdateSpeakerCard(spk) {
+        const name = (spk.name || 'Unknown Speaker').trim();
+        const safeId = 'sb-spk-' + name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const scoreVal = typeof spk.score === 'number' ? spk.score : (parseFloat(spk.score) || 5.0);
+        const score = scoreVal.toFixed(1);
+        const badgeClass = getScoreBadgeClass(scoreVal);
+        const summary = spk.summary || '';
+        const keyPoints = Array.isArray(spk.key_points) ? spk.key_points : [];
+        const keywords = Array.isArray(spk.keywords) ? spk.keywords : [];
+        const scoreReason = spk.score_reason || '';
+
+        // Avatar lookup
+        const foundUser = registeredUsers.find(u => (u.name || '').toLowerCase() === name.toLowerCase());
+        const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'SP';
+        const avatarHtml = (foundUser && foundUser.avatar_b64)
+          ? `<img class="sb-spk-avatar" src="${foundUser.avatar_b64}" alt="${escapeHtml(name)}">`
+          : `<div class="sb-spk-avatar">${escapeHtml(initials)}</div>`;
+
+        const keyPointsHtml = keyPoints.length > 0
+          ? `<div class="sb-keypoints-wrap">
+               <div class="sb-keypoints-title">Key Points & Takeaways</div>
+               <ul class="sb-keypoints-list">
+                 ${keyPoints.map(kp => `<li>${escapeHtml(kp)}</li>`).join('')}
+               </ul>
+             </div>`
+          : '';
+
+        const keywordsHtml = keywords.length > 0
+          ? `<div class="sb-keywords">
+               ${keywords.map(kw => `<span class="sb-keyword-tag">${escapeHtml(kw)}</span>`).join('')}
+             </div>`
+          : '';
+
+        const scoreReasonHtml = scoreReason
+          ? `<div class="sb-score-reason">💡 <strong>Value breakdown:</strong> ${escapeHtml(scoreReason)}</div>`
+          : '';
+
+        const cardContent = `
+          <div class="sb-spk-head">
+            ${avatarHtml}
+            <div class="sb-spk-title-wrap">
+              <div class="sb-spk-name">${escapeHtml(name)}</div>
+            </div>
+            <div class="sb-score-badge ${badgeClass}">⭐ ${score} / 10</div>
+          </div>
+          <div class="sb-spk-summary">${escapeHtml(summary)}</div>
+          ${keyPointsHtml}
+          ${scoreReasonHtml}
+          ${keywordsHtml}
+        `;
+
+        let card = document.getElementById(safeId);
+        if (!card) {
+          card = document.createElement('div');
+          card.className = 'sb-speaker-card';
+          card.id = safeId;
+          card.innerHTML = cardContent;
+          sbBody.appendChild(card);
+        } else {
+          // Smooth in-place update without destroying card DOM
+          card.innerHTML = cardContent;
+          card.classList.add('updated');
+          setTimeout(() => card.classList.remove('updated'), 1200);
+        }
+      }
+
+      function renderOrUpdateMeetingSummary(overallSummary) {
+        if (!overallSummary) return;
+        let summaryCard = document.getElementById('sb-meeting-summary-card');
+        if (!summaryCard) {
+          summaryCard = document.createElement('div');
+          summaryCard.className = 'sb-meeting-summary-card';
+          summaryCard.id = 'sb-meeting-summary-card';
+          summaryCard.innerHTML = `
+            <div class="sb-meeting-summary-title">📌 Executive Overview</div>
+            <div class="sb-meeting-summary-text">${escapeHtml(overallSummary)}</div>
+          `;
+          sbBody.insertBefore(summaryCard, sbBody.firstChild);
+        } else {
+          const textEl = summaryCard.querySelector('.sb-meeting-summary-text');
+          if (textEl) textEl.textContent = overallSummary;
+        }
       }
 
       async function runAnalysis() {
+        if (isAnalysing) return;
         const transcript = buildTranscriptText();
         if (!transcript) {
-          sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">⚠️</span>No transcript yet — start recording first.</div>';
           return;
         }
-        const card = addAnalysisCard();
-        const bodyEl = card.querySelector('.analysis-card-body');
+
+        isAnalysing = true;
+
         try {
           const resp = await fetch('/api/analyse', {
             method: 'POST',
@@ -1883,17 +2088,39 @@
           if (!resp.ok) throw new Error('Server error ' + resp.status);
           const data = await resp.json();
           if (data.error) throw new Error(data.error);
-          card.classList.remove('loading');
-          bodyEl.textContent = data.result || '(empty response)';
+
+          sbBody.querySelector('.sb-empty')?.remove();
+
+          // Render executive overview
+          if (data.overall_summary) {
+            renderOrUpdateMeetingSummary(data.overall_summary);
+          }
+
+          // Render or update each speaker in-place
+          if (Array.isArray(data.speakers) && data.speakers.length > 0) {
+            data.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
+          }
         } catch (err) {
-          card.classList.remove('loading');
-          bodyEl.style.color = '#f38ba8';
-          bodyEl.textContent = 'Error: ' + err.message;
+          if (!sbBody.querySelector('.sb-speaker-card')) {
+            sbBody.innerHTML = `<div class="sb-empty"><span class="sb-empty-icon">⚠️</span>${escapeHtml(err.message || 'Analysis unavailable')}</div>`;
+          }
+        } finally {
+          isAnalysing = false;
         }
-        sbBody.scrollTop = sbBody.scrollHeight;
       }
 
-      sbAnalyseNow.addEventListener('click', runAnalysis);
+      function startAnalysisLoop() {
+        stopAnalysisLoop();
+        analysisTimer = setInterval(() => {
+          if (listening && rawLines.length > 0) {
+            runAnalysis();
+          }
+        }, 40000);
+      }
+
+      function stopAnalysisLoop() {
+        if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
+      }
 
 
       // ── Download ──────────────────────────────────────────────────────────

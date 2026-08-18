@@ -27,3 +27,10 @@ pretrained_models/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
