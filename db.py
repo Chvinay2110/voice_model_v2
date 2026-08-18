@@ -43,6 +43,7 @@ def init_db():
                 tagged_as TEXT,
                 predicted_speaker TEXT,
                 predicted_confidence REAL DEFAULT 0.0,
+                is_mixed INTEGER DEFAULT 0,
                 audio_b64 TEXT,
                 embedding_json TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -56,9 +57,21 @@ def init_db():
                 centroid_json TEXT
             );
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS meeting_meta (
+                key TEXT PRIMARY KEY,
+                value_json TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         # Migration: add embedding_json column to existing databases
         try:
             conn.execute("ALTER TABLE turns ADD COLUMN embedding_json TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        # Migration: add is_mixed column to existing databases
+        try:
+            conn.execute("ALTER TABLE turns ADD COLUMN is_mixed INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
             pass  # Column already exists
         # Migration: add audio_blob BLOB column and convert existing base64 TEXT data
@@ -110,14 +123,15 @@ def upsert_turn(
     predicted_speaker: Optional[str] = None,
     predicted_confidence: float = 0.0,
     embedding_json: Optional[str] = None,
+    is_mixed: Optional[int] = None,
 ):
     # Convert base64 text to raw bytes for compact BLOB storage
     audio_blob = base64.b64decode(audio_b64) if audio_b64 else None
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT INTO turns (turn_order, text, speaker_label, audio_blob, tagged_as, predicted_speaker, predicted_confidence, embedding_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO turns (turn_order, text, speaker_label, audio_blob, tagged_as, predicted_speaker, predicted_confidence, embedding_json, is_mixed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 0))
             ON CONFLICT(turn_order) DO UPDATE SET
                 text = excluded.text,
                 speaker_label = excluded.speaker_label,
@@ -125,7 +139,8 @@ def upsert_turn(
                 tagged_as = COALESCE(excluded.tagged_as, turns.tagged_as),
                 predicted_speaker = COALESCE(excluded.predicted_speaker, turns.predicted_speaker),
                 predicted_confidence = CASE WHEN excluded.predicted_confidence > 0 THEN excluded.predicted_confidence ELSE turns.predicted_confidence END,
-                embedding_json = COALESCE(excluded.embedding_json, turns.embedding_json)
+                embedding_json = COALESCE(excluded.embedding_json, turns.embedding_json),
+                is_mixed = CASE WHEN ? IS NOT NULL THEN ? ELSE turns.is_mixed END
         """,
             (
                 turn_order,
@@ -136,8 +151,18 @@ def upsert_turn(
                 predicted_speaker,
                 predicted_confidence,
                 embedding_json,
+                is_mixed,
+                is_mixed,
+                is_mixed,
             ),
         )
+        conn.commit()
+
+
+def update_turn_mixed(turn_order: int, is_mixed: int):
+    """Update whether a turn is mixed audio / excluded from centroids."""
+    with get_conn() as conn:
+        conn.execute("UPDATE turns SET is_mixed = ? WHERE turn_order = ?", (is_mixed, turn_order))
         conn.commit()
 
 
@@ -162,7 +187,7 @@ def get_all_turns_lite() -> List[dict]:
     with get_conn() as conn:
         cur = conn.execute(
             "SELECT turn_order, text, speaker_label, tagged_as, "
-            "predicted_speaker, predicted_confidence, created_at, "
+            "predicted_speaker, predicted_confidence, is_mixed, created_at, "
             "(audio_blob IS NOT NULL OR audio_b64 IS NOT NULL) AS has_audio "
             "FROM turns ORDER BY turn_order DESC"
         )
@@ -241,6 +266,13 @@ def update_turn_embedding(turn_order: int, embedding_json: str):
         conn.commit()
 
 
+def delete_turn(turn_order: int):
+    """Delete a single turn from the database."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM turns WHERE turn_order = ?", (turn_order,))
+        conn.commit()
+
+
 def clear_all_turns():
     with get_conn() as conn:
         conn.execute("DELETE FROM turns")
@@ -298,4 +330,44 @@ def clear_all_profiles():
     with get_conn() as conn:
         conn.execute("DELETE FROM profiles")
         conn.execute("DELETE FROM turns")
+        conn.execute("DELETE FROM meeting_meta")
+        conn.commit()
+
+
+# ── Meeting Meta / Analytics Operations ──────────────────────────────────────
+
+
+def set_meeting_meta(key: str, value):
+    """Save persistent JSON data for wordcloud, speaker analysis, or meeting summary."""
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO meeting_meta (key, value_json, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET
+                value_json = excluded.value_json,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (key, json.dumps(value)),
+        )
+        conn.commit()
+
+
+def get_meeting_meta(key: str, default=None):
+    """Retrieve persistent JSON data for a given key."""
+    with get_conn() as conn:
+        cur = conn.execute("SELECT value_json FROM meeting_meta WHERE key = ?", (key,))
+        row = cur.fetchone()
+        if row and row["value_json"]:
+            try:
+                return json.loads(row["value_json"])
+            except Exception:
+                return default
+        return default
+
+
+def clear_meeting_meta():
+    """Clear all persistent analytics metadata."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM meeting_meta")
         conn.commit()

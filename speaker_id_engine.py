@@ -206,6 +206,41 @@ def update_user_centroid(name: str, embeddings: list):
     )
 
 
+def enroll_user_long_audio(speaker_name: str, pcm_float32_16k: np.ndarray) -> dict:
+    """Enroll a user by processing the entire continuous recorded audio clip (e.g. 10s–60s reading)
+    directly through ECAPA-TDNN's Attentive Statistics Pooling."""
+    name = speaker_name.strip()
+    if not name:
+        raise ValueError("User name required")
+    if name not in _profiles:
+        create_user(name)
+
+    pcm_len = len(pcm_float32_16k)
+    sample_rate = 16000
+    duration_s = pcm_len / sample_rate
+
+    # Extract 192-d centroid directly from the entire raw continuous audio clip
+    centroid = extract_embedding(pcm_float32_16k)
+
+    _profiles[name]["embeddings"] = [centroid]
+    _profiles[name]["centroid"] = centroid
+
+    db.upsert_profile(
+        name=name,
+        avatar_b64=_profiles[name].get("avatar_b64"),
+        samples_count=1,
+        centroid_list=centroid.tolist(),
+    )
+
+    log.info("Successfully enrolled user '%s' directly from full continuous %.1fs audio clip", name, duration_s)
+    return {
+        "speaker": name,
+        "samples_count": 1,
+        "duration_sec": round(duration_s, 1),
+        "has_voiceprint": True,
+    }
+
+
 def identify_embedding(test_emb: torch.Tensor, threshold: float = 0.50) -> dict:
     """Compare a precomputed 192-d embedding against all enrolled user centroids."""
     active_profiles = {k: v["centroid"] for k, v in _profiles.items() if v["centroid"] is not None}

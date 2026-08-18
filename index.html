@@ -200,13 +200,25 @@
       font-weight: 700;
     }
 
-    .lang-btn.active .filter-badge {
-      background: rgba(255, 255, 255, 0.28);
-      color: #fff;
+    .btn-transcribe-toggle {
+      font-weight: 600;
+      transition: all 0.15s ease;
     }
-
-    #resumeBtn {
-      display: none;
+    .btn-transcribe-toggle.running {
+      border-color: #fca5a5;
+      color: #dc2626;
+      background: #fff5f5;
+    }
+    .btn-transcribe-toggle.running:hover {
+      background: #fee2e2;
+    }
+    .btn-transcribe-toggle.paused {
+      border-color: #86efac;
+      color: #16a34a;
+      background: #f0fdf4;
+    }
+    .btn-transcribe-toggle.paused:hover {
+      background: #dcfce7;
     }
 
     /* ── MAIN BODY two-column layout ── */
@@ -286,32 +298,41 @@
     /* ── Pure Typographic Word Cloud ── */
     #wordcloudPane {
       flex: 1;
-      padding: 18px 20px;
+      padding: 12px 14px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: center;
       align-content: center;
-      gap: 8px 16px;
+      gap: 6px 10px;
+      overflow-x: hidden;
       overflow-y: auto;
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
+      box-sizing: border-box;
+      max-width: 100%;
     }
 
     .wc-typography-word {
       display: inline-block;
       font-weight: 700;
-      line-height: 1.15;
+      line-height: 1.2;
       cursor: default;
-      transition: transform .2s cubic-bezier(.34, 1.56, .64, 1), filter .2s ease;
+      transition: transform .18s ease, filter .18s ease;
       user-select: none;
-      white-space: nowrap;
-      letter-spacing: -0.3px;
+      white-space: normal;
+      text-align: center;
+      max-width: 100%;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      letter-spacing: -0.2px;
+      padding: 2px 4px;
+      box-sizing: border-box;
     }
 
     .wc-typography-word:hover {
-      transform: scale(1.18);
-      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, .15));
+      transform: scale(1.06);
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .12));
       z-index: 10;
     }
 
@@ -831,8 +852,7 @@
       <button class="btn lang-btn" id="btnHindi">Hindi</button>
       <div class="header-actions">
         <button class="btn" id="downloadBtn">⬇ Download</button>
-        <button class="btn btn-danger" id="stopBtn">Stop</button>
-        <button class="btn" id="resumeBtn">Resume</button>
+        <button class="btn btn-transcribe-toggle running" id="btnToggleTranscribe">Stop Transcribing</button>
         <button class="btn" id="aiAnalysisBtn">AI Analysis</button>
       </div>
     </header>
@@ -894,14 +914,24 @@
       const homePage = document.getElementById('home-page');
       const appPage = document.getElementById('app-page');
       const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
+      const btnToggleTranscribe = document.getElementById('btnToggleTranscribe');
       const downloadBtn = document.getElementById('downloadBtn');
-      const resumeBtn = document.getElementById('resumeBtn');
       const speakerContainer = document.getElementById('speakerContainer');
       const emptyState = document.getElementById('emptyState');
       const interimBar = document.getElementById('interimBar');
       const btnEnglish = document.getElementById('btnEnglish');
       const btnHindi = document.getElementById('btnHindi');
+
+      function updateTranscribeButtonUI(isTranscribing) {
+        if (!btnToggleTranscribe) return;
+        if (isTranscribing) {
+          btnToggleTranscribe.className = 'btn btn-transcribe-toggle running';
+          btnToggleTranscribe.textContent = 'Stop Transcribing';
+        } else {
+          btnToggleTranscribe.className = 'btn btn-transcribe-toggle paused';
+          btnToggleTranscribe.textContent = 'Start Transcribing';
+        }
+      }
 
       function setStatus(msg) { /* status removed from header */ }
 
@@ -1044,6 +1074,66 @@
         chartInstance.update();
       }
 
+      // ── Phonetic Devanagari to Roman (Hinglish) Transliterator ───────────
+      function transliterateDevanagariToRoman(text) {
+        if (!text || !/[\u0900-\u097F]/.test(text)) return text;
+
+        const VOWELS = {
+          'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo',
+          'ऋ': 'ri', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
+          'अं': 'an', 'अः': 'ah', 'ॐ': 'om'
+        };
+
+        const MATRAS = {
+          'ा': 'aa', 'ि': 'i', 'ी': 'ee', 'ु': 'u', 'ू': 'oo',
+          'ृ': 'ri', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au',
+          'ं': 'n', 'ः': 'h', 'ँ': 'n', '्': ''
+        };
+
+        const CONSONANTS = {
+          'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'ng',
+          'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'ny',
+          'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh', 'ण': 'n',
+          'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+          'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+          'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh',
+          'ष': 'sh', 'स': 's', 'ह': 'h',
+          'क़': 'q', 'ख़': 'kh', 'ग़': 'gh', 'ज़': 'z', 'ड़': 'r', 'ढ़': 'rh', 'फ़': 'f'
+        };
+
+        let result = '';
+        const len = text.length;
+
+        for (let i = 0; i < len; i++) {
+          const char = text[i];
+          const nextChar = (i + 1 < len) ? text[i + 1] : '';
+
+          if (CONSONANTS[char]) {
+            const cons = CONSONANTS[char];
+            if (nextChar === '्') {
+              result += cons;
+              i++;
+            } else if (MATRAS[nextChar]) {
+              result += cons + MATRAS[nextChar];
+              i++;
+            } else if (/[\u0905-\u0939]/.test(nextChar)) {
+              result += cons + 'a';
+            } else if (nextChar === ' ' || !nextChar || /[.,!?;:\n]/.test(nextChar)) {
+              result += cons;
+            } else {
+              result += cons;
+            }
+          } else if (VOWELS[char]) {
+            result += VOWELS[char];
+          } else if (MATRAS[char]) {
+            result += MATRAS[char];
+          } else {
+            result += char;
+          }
+        }
+        return result;
+      }
+
       async function googleTranslate(text, targetLang) {
         try {
           const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
@@ -1057,14 +1147,13 @@
       // Called after a turn finalises — computes EN + HI translations in background.
       async function computeTranslations(turnEl, originalText) {
         turnEl.dataset.original = originalText;
-        // kick off both in parallel
         const [en, hi] = await Promise.all([
           googleTranslate(originalText, 'en'),
           googleTranslate(originalText, 'hi')
         ]);
         if (en) turnEl.dataset.en = en;
         if (hi) turnEl.dataset.hi = hi;
-        // if a language mode is already active, update this turn immediately
+
         if (viewMode === 'en' && en) turnEl.textContent = en;
         else if (viewMode === 'hi' && hi) turnEl.textContent = hi;
       }
@@ -1073,7 +1162,7 @@
       function applyViewMode() {
         document.querySelectorAll('.turn-line:not(.interim)').forEach(el => {
           const orig = el.dataset.original;
-          if (!orig) return; // not yet stored
+          if (!orig) return;
           if (viewMode === 'en') el.textContent = el.dataset.en || orig;
           else if (viewMode === 'hi') el.textContent = el.dataset.hi || orig;
           else el.textContent = orig;
@@ -1084,18 +1173,26 @@
       function getOrCreateSpeakerBox(speakerId) {
         if (speakerBoxes[speakerId]) return speakerBoxes[speakerId];
         // hide empty state
-        if (emptyState) emptyState.remove();
+        if (emptyState && emptyState.parentNode) emptyState.remove();
 
         const idx = Object.keys(speakerBoxes).length;
         const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
-        const name = 'Speaker ' + speakerId;
+        
+        let displayName = speakerId;
+        if (/^[A-Z0-9]$/i.test(speakerId)) {
+          displayName = 'Speaker ' + speakerId;
+        } else if (speakerId.startsWith('USR_')) {
+          displayName = speakerId.replace(/^USR_/, '').replace(/_/g, ' ');
+        }
 
         const foundUser = registeredUsers.find(u => 
-          (u.name || '').toLowerCase() === name.toLowerCase() ||
+          (u.name || '').toLowerCase() === displayName.toLowerCase() ||
           (u.name || '').toLowerCase() === speakerId.toLowerCase()
         );
+        if (foundUser && foundUser.name) displayName = foundUser.name;
+
         const avatarHtml = (foundUser && foundUser.avatar_b64)
-          ? `<img class="spk-avatar-img" src="${foundUser.avatar_b64}" alt="${escapeHtml(name)}">`
+          ? `<img class="spk-avatar-img" src="${foundUser.avatar_b64}" alt="${escapeHtml(displayName)}">`
           : '';
 
         const box = document.createElement('div');
@@ -1104,7 +1201,7 @@
         box.innerHTML = `
       <div class="speaker-box-header">
         ${avatarHtml}
-        <span class="spk-name" title="Click to rename" contenteditable="false">${escapeHtml(name)}</span>
+        <span class="spk-name" title="Click to rename" contenteditable="false">${escapeHtml(displayName)}</span>
         <span class="spk-dot" style="background:${color}"></span>
       </div>
       <div class="speaker-box-body"></div>
@@ -1122,7 +1219,7 @@
         });
         nameEl.addEventListener('blur', () => {
           nameEl.contentEditable = 'false';
-          speakerBoxes[speakerId].name = nameEl.textContent.trim() || name;
+          speakerBoxes[speakerId].name = nameEl.textContent.trim() || displayName;
           recalculateSpeakingChart(finalizedTurns);
         });
         nameEl.addEventListener('keydown', e => {
@@ -1135,7 +1232,7 @@
           boxEl: box,
           bodyEl: box.querySelector('.speaker-box-body'),
           color,
-          name,
+          name: displayName,
         };
         return speakerBoxes[speakerId];
       }
@@ -1385,6 +1482,7 @@
 
       // ── Audio / WebSocket ─────────────────────────────────────────────────
       let listening = false;
+      let isTranscriptionPaused = false;
       let micStream = null;
       let aaiSocket = null;
       let streamCtx = null, streamSource = null, streamProcessor = null, streamSilentGain = null;
@@ -1444,6 +1542,10 @@
             streamSource = streamCtx.createMediaStreamSource(micStream);
             streamProcessor = streamCtx.createScriptProcessor(2048, 1, 1);
             streamProcessor.onaudioprocess = (e) => {
+              if (isTranscriptionPaused) {
+                setInterimText('');
+                return; // Mute / pause audio processing without closing websocket
+              }
               if (!aaiSocket || aaiSocket.readyState !== WebSocket.OPEN) return;
               lastAudioFrameTime = Date.now();
               const float32 = e.inputBuffer.getChannelData(0);
@@ -1467,14 +1569,20 @@
         };
 
         aaiSocket.onmessage = (event) => {
+          if (isTranscriptionPaused) {
+            setInterimText('');
+            return;
+          }
           let data;
           try { data = JSON.parse(event.data); } catch (e) { return; }
           if (data.type === 'Begin') {
-            setStatus('Listening…');
+            setStatus(isTranscriptionPaused ? 'Paused (Transcribing stopped)' : 'Listening…');
           } else if (data.type === 'SpeechStarted') {
             // activity signal — no action needed
           } else if (data.type === 'Turn') {
-            handleAaiTurn(data, fTurns);
+            if (!isTranscriptionPaused) {
+              handleAaiTurn(data, fTurns);
+            }
           } else if (data.type === 'Termination') {
             setStatus('Stopped.');
             closeSocket();
@@ -1525,14 +1633,14 @@
         stopWatchdog();
         teardownStream();
         teardownMic();
-        setStatus('Mic dropped. Click Resume.');
-        resumeBtn.style.display = 'inline-block';
+        setStatus('Mic dropped. Start recording to resume.');
+        updateTranscribeButtonUI(false);
       }
 
       // ── Pure Typographic Word Cloud ──────────────────────────────────────
       const wordcloudPane = document.getElementById('wordcloudPane');
-      let wordcloudTimer = null;
-      let isFetchingWordcloud = false;
+      let intelligenceTimer = null;
+      let isFetchingIntelligence = false;
 
       const TYPOGRAPHY_COLORS = [
         '#4f46e5', // Indigo
@@ -1548,42 +1656,95 @@
         '#2563eb'  // Cobalt Blue
       ];
 
-      function buildFullEnglishTranscript() {
-        const turns = Object.values(finalizedTurns);
-        if (turns.length === 0) return '';
-        return turns.map(t => `${speakerName(t.speakerId)}: ${t.turnEl.dataset.en || t.text}`).join('\n');
+      function buildFullTranscript() {
+        const sortedOrders = Object.keys(finalizedTurns).map(Number).sort((a, b) => a - b);
+        if (sortedOrders.length === 0) return '';
+        // Last 200 turns for context efficiency
+        const recent = sortedOrders.slice(-200);
+        return recent.map(to => {
+          const ft = finalizedTurns[to];
+          const spk = speakerName(ft.speakerId) || ft.speakerId || 'Speaker';
+          return `${spk}: ${ft.text || ''}`;
+        }).join('\n');
       }
 
-      async function updateWordCloud() {
-        if (!listening || isFetchingWordcloud) return;
-        const transcript = buildFullEnglishTranscript();
+      // ── Single unified intelligence call every 30 seconds ──────────────
+      async function runLiveIntelligence() {
+        if (!listening || isFetchingIntelligence || isTranscriptionPaused) return;
+        const transcript = buildFullTranscript();
         if (!transcript || Object.keys(finalizedTurns).length < 2) return;
 
+        isFetchingIntelligence = true;
         try {
-          isFetchingWordcloud = true;
-          const resp = await fetch('/api/wordcloud', {
+          const resp = await fetch('/api/live-intelligence', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ transcript })
           });
-          if (resp.ok) {
-            const data = await resp.json();
-            if (data.words && data.words.length > 0) {
-              renderWordCloud(data.words);
-            }
+          if (!resp.ok) { isFetchingIntelligence = false; return; }
+          const data = await resp.json();
+
+          // ── Update Discussion Topics (Word Cloud) ──
+          if (data.words && data.words.length > 0) {
+            renderWordCloud(data.words);
           }
+
+          // ── Update Speaker Analysis Cards ──
+          sbBody.querySelector('.sb-empty')?.remove();
+
+          if (data.overall_summary) {
+            renderOrUpdateMeetingSummary(data.overall_summary);
+          }
+
+          if (Array.isArray(data.speakers) && data.speakers.length > 0) {
+            data.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
+          }
+
+          // Prune stale speaker cards that no longer match active transcript speakers
+          const activeSpeakerNames = new Set(
+            Object.values(finalizedTurns).map(ft =>
+              (speakerName(ft.speakerId) || ft.speakerId || '').trim().toLowerCase()
+            )
+          );
+          sbBody.querySelectorAll('.sb-speaker-card').forEach(card => {
+            const cardName = (card.querySelector('.sb-spk-name')?.textContent || '').trim().toLowerCase();
+            const wordCount = getSpeakerWordCount(cardName);
+            const isRegistered = (registeredUsers || []).some(u => (u.name || '').toLowerCase() === cardName);
+            if (!activeSpeakerNames.has(cardName) || (!isRegistered && wordCount < 100)) {
+              card.remove();
+            }
+          });
+
+          // Threshold note
+          const hasSpeakerCards = sbBody.querySelectorAll('.sb-speaker-card').length > 0;
+          let note = document.getElementById('sb-threshold-note');
+          if (!hasSpeakerCards) {
+            if (!note) {
+              note = document.createElement('div');
+              note.id = 'sb-threshold-note';
+              note.className = 'sb-empty';
+              note.innerHTML = '<span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.';
+              sbBody.appendChild(note);
+            }
+          } else if (note) {
+            note.remove();
+          }
+
         } catch (e) {
         } finally {
-          isFetchingWordcloud = false;
+          isFetchingIntelligence = false;
         }
       }
 
-      const RANK_SIZES = [44, 34, 28, 23, 19, 16, 14, 13, 12];
-      const RANK_WEIGHTS = ['800', '800', '700', '700', '600', '600', '500', '500', '500'];
+      const RANK_SIZES = [22, 19, 17, 15, 14, 13, 12, 11, 10];
+      const RANK_WEIGHTS = ['700', '700', '700', '600', '600', '600', '500', '500', '500'];
 
       function renderWordCloud(wordList) {
         if (!wordcloudPane || !wordList || wordList.length === 0) return;
         wordcloudPane.innerHTML = '';
+
+        const paneWidth = wordcloudPane.clientWidth || 280;
+        const maxFitWidth = Math.max(160, paneWidth - 36);
 
         // Normalize word items: [text, weight]
         const items = wordList.map(item => {
@@ -1599,8 +1760,17 @@
         // Arrange center-out with rank assigned
         const arranged = [];
         sorted.forEach((item, rank) => {
-          const fontSize = RANK_SIZES[Math.min(rank, RANK_SIZES.length - 1)];
+          let baseSize = RANK_SIZES[Math.min(rank, RANK_SIZES.length - 1)];
           const fontWeight = RANK_WEIGHTS[Math.min(rank, RANK_WEIGHTS.length - 1)];
+
+          // Adapt font size to string length so long phrases fit cleanly
+          const strLen = item[0].length;
+          if (strLen > 8) {
+            const maxAllowedForLength = Math.floor(maxFitWidth / (strLen * 0.58));
+            baseSize = Math.min(baseSize, maxAllowedForLength);
+          }
+          const fontSize = Math.max(10, Math.min(22, baseSize));
+
           const itemWithStyle = { text: item[0], fontSize, fontWeight, rank };
 
           if (rank % 2 === 0) arranged.push(itemWithStyle);
@@ -1616,36 +1786,41 @@
           span.style.color = color;
           span.textContent = obj.text;
           wordcloudPane.appendChild(span);
+
+          // Safeguard: if rendered element still exceeds container, smoothly scale font down
+          if (span.offsetWidth > maxFitWidth) {
+            const ratio = maxFitWidth / span.offsetWidth;
+            const newSize = Math.max(10, Math.floor(obj.fontSize * ratio));
+            span.style.fontSize = `${newSize}px`;
+          }
         });
       }
 
-      function startWordCloudLoop() {
-        stopWordCloudLoop();
-        wordcloudTimer = setInterval(updateWordCloud, 30000);
-        // Initial fetch after 30 seconds of speech
-        setTimeout(updateWordCloud, 30000);
+      function startIntelligenceLoop() {
+        stopIntelligenceLoop();
+        intelligenceTimer = setInterval(runLiveIntelligence, 30000);
+        // First intelligence run after 30 seconds of speech
+        setTimeout(runLiveIntelligence, 30000);
       }
 
-      function stopWordCloudLoop() {
-        if (wordcloudTimer) { clearInterval(wordcloudTimer); wordcloudTimer = null; }
+      function stopIntelligenceLoop() {
+        if (intelligenceTimer) { clearInterval(intelligenceTimer); intelligenceTimer = null; }
       }
 
       // ── Recording control ─────────────────────────────────────────────────
       async function beginRecording() {
-        nextGlobalTurnOrder = 1;
         listening = true;
         setStatus('Starting...');
         lastAudioFrameTime = Date.now();
         await setupMic();
-        if (!micStream) { listening = false; resumeBtn.style.display = 'inline-block'; return; }
+        if (!micStream) { listening = false; updateTranscribeButtonUI(false); return; }
         await setupAssemblyAIStream();
         startWatchdog();
-        startWordCloudLoop();
-        startAnalysisLoop();
+        startIntelligenceLoop();
       }
 
       function endRecording() {
-        listening = false; stopWatchdog(); stopWordCloudLoop(); stopAnalysisLoop();
+        listening = false; stopWatchdog(); stopIntelligenceLoop();
         teardownMic();
         teardownAudio();
         if (aaiSocket && aaiSocket.readyState === WebSocket.OPEN) {
@@ -1663,12 +1838,19 @@
         beginRecording();
       });
 
-      stopBtn.addEventListener('click', endRecording);
-
-      resumeBtn.addEventListener('click', () => {
-        resumeBtn.style.display = 'none';
-        beginRecording();
-      });
+      if (btnToggleTranscribe) {
+        btnToggleTranscribe.addEventListener('click', async () => {
+          const nextState = isTranscriptionPaused; // if paused, start (true); if active, pause (false)
+          updateTranscribeButtonUI(nextState);
+          try {
+            await fetch('/api/set-recording-state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ is_transcribing: nextState })
+            });
+          } catch(e) {}
+        });
+      }
 
       // ── BACKGROUND: Upload turn audio to backend & auto-identify ────────
       let registeredUsers = [];
@@ -1773,17 +1955,32 @@
         recalculateSpeakingChart(finalizedTurns);
       }
 
-      // Auto-identify a finalized turn against registered voiceprints
+      // Auto-identify a finalized turn against registered voiceprints with Cluster Inheritance
+      const sessionClusterMap = {};
+
       async function autoIdentifyTurn(turnOrder, fTurns, explicitAudioB64) {
-        if (registeredUsers.length === 0) {
+        if (!registeredUsers || registeredUsers.length === 0) {
           try {
             const r = await fetch('/api/registered-users');
             if (r.ok) { registeredUsers = (await r.json()).users || []; }
           } catch(e) {}
-          if (registeredUsers.length === 0) return;
+          if (!registeredUsers || registeredUsers.length === 0) {
+            // When all profiles are wiped, never assign to any previous name
+            for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
+            return;
+          }
         }
+
+        const origSpk = (fTurns[turnOrder] && fTurns[turnOrder].originalSpeakerId) || 'A';
         const audioB64 = explicitAudioB64 || getTurnAudioBase64(turnOrder);
-        if (!audioB64) return;
+
+        if (!audioB64) {
+          if (sessionClusterMap[origSpk] && fTurns[turnOrder]) {
+            reassignTurnToSpeaker(turnOrder, sessionClusterMap[origSpk]);
+          }
+          return;
+        }
+
         try {
           const resp = await fetch('/api/identify-turn', {
             method: 'POST',
@@ -1793,11 +1990,18 @@
           if (!resp.ok) return;
           const result = await resp.json();
           const conf = result.confidence_pct || 0;
-          const matchedSpeaker = result.winner || (conf > 15.0 ? result.top_match : null);
+          const matchedSpeaker = result.winner || (conf > 20.0 ? result.top_match : null);
+
           if (matchedSpeaker && fTurns[turnOrder]) {
+            sessionClusterMap[origSpk] = matchedSpeaker;
             fTurns[turnOrder].voiceTagged = true;
             fTurns[turnOrder].voiceConfidence = conf + '%';
             reassignTurnToSpeaker(turnOrder, matchedSpeaker);
+          } else if (sessionClusterMap[origSpk] && fTurns[turnOrder]) {
+            const inheritedSpeaker = sessionClusterMap[origSpk];
+            fTurns[turnOrder].voiceTagged = false;
+            fTurns[turnOrder].clusterInherited = true;
+            reassignTurnToSpeaker(turnOrder, inheritedSpeaker);
           }
         } catch(e) {}
       }
@@ -1807,7 +2011,7 @@
       function updateSpeakerAvatars() {
         for (const [sid, box] of Object.entries(speakerBoxes)) {
           const currentName = (box.name || speakerName(sid) || '').trim().toLowerCase();
-          const u = registeredUsers.find(ru => {
+          const u = (registeredUsers || []).find(ru => {
             const rname = (ru.name || '').trim().toLowerCase();
             return rname === currentName || rname === sid.toLowerCase() || ('usr_' + rname.replace(/[^a-z0-9_]/g, '_')) === sid.toLowerCase();
           });
@@ -1829,29 +2033,136 @@
       }
 
       function syncTurnsFromServer(turns) {
-        turns.forEach(t => {
-          const ft = finalizedTurns[t.turn_order];
-          if (ft) {
-            const conf = t.predicted_confidence || 0;
-            const targetSpeaker = t.tagged_as || (conf > 15.0 ? t.predicted_speaker : null);
-            if (targetSpeaker) {
-              const currentName = speakerName(ft.speakerId);
-              if (currentName.toLowerCase() !== targetSpeaker.toLowerCase()) {
-                reassignTurnToSpeaker(t.turn_order, targetSpeaker);
-              }
-            } else if (ft.speakerId.startsWith('USR_')) {
-              const origSpk = ft.originalSpeakerId || 'A';
-              reassignTurnToSpeaker(t.turn_order, origSpk, true);
+        if (!turns) return;
+        if (turns.length === 0) {
+          for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
+        }
+
+        const incomingTurnOrders = new Set(turns.map(t => Number(t.turn_order)));
+
+        // 1. Remove turns from client DOM and fTurns if they were deleted/cleared in DB
+        for (const [tOrderStr, ft] of Object.entries(finalizedTurns)) {
+          const to = Number(tOrderStr);
+          if (!incomingTurnOrders.has(to)) {
+            if (ft.turnEl && ft.turnEl.parentNode) {
+              ft.turnEl.remove();
+            }
+            delete finalizedTurns[to];
+          }
+        }
+
+        // 2. Sort turns in ascending turn_order so they appear in chronological order
+        const sorted = [...turns].sort((a, b) => Number(a.turn_order) - Number(b.turn_order));
+
+        // 3. Render or update every turn from the database
+        sorted.forEach(t => {
+          const rawSpeaker = t.speaker_label || 'A';
+          if (t.tagged_as) {
+            sessionClusterMap[rawSpeaker] = t.tagged_as;
+          } else if (t.predicted_speaker && (t.predicted_confidence || 0) >= 35.0) {
+            sessionClusterMap[rawSpeaker] = t.predicted_speaker;
+          }
+
+          const turnOrder = Number(t.turn_order);
+          const conf = t.predicted_confidence || 0;
+          let assignedSpeaker = t.tagged_as || (conf > 15.0 ? t.predicted_speaker : null);
+          if (!assignedSpeaker && sessionClusterMap[rawSpeaker]) {
+            assignedSpeaker = sessionClusterMap[rawSpeaker];
+          }
+          const isNamed = !!assignedSpeaker;
+          const targetSpeakerName = assignedSpeaker || rawSpeaker;
+
+          let targetBox, targetSpeakerId;
+          if (isNamed) {
+            const res = getOrCreateNamedSpeakerBox(targetSpeakerName);
+            targetBox = res.box;
+            targetSpeakerId = res.speakerId;
+          } else {
+            targetBox = getOrCreateSpeakerBox(targetSpeakerName);
+            targetSpeakerId = targetSpeakerName;
+          }
+
+          let ft = finalizedTurns[turnOrder];
+          if (!ft) {
+            // New turn loaded from DB
+            const turnEl = document.createElement('div');
+            turnEl.className = 'turn-line';
+            turnEl.textContent = t.text || '';
+            turnEl.dataset.original = t.text || '';
+            targetBox.bodyEl.appendChild(turnEl);
+            scrollBoxToBottom(targetBox.bodyEl);
+
+            finalizedTurns[turnOrder] = {
+              turnEl,
+              speakerId: targetSpeakerId,
+              originalSpeakerId: rawSpeaker,
+              text: t.text || '',
+              duration: Math.max(0.4, (t.text || '').split(/\s+/).length * 0.4)
+            };
+
+            rawLines.push({ time: fmtTime(), text: t.text || '', speakerId: targetSpeakerId });
+            computeTranslations(turnEl, t.text || '');
+          } else {
+            // Update existing turn if changed
+            if (t.text && ft.text !== t.text) {
+              ft.text = t.text;
+              ft.turnEl.textContent = t.text;
+              ft.turnEl.dataset.original = t.text;
+              computeTranslations(ft.turnEl, t.text);
+            }
+            if (ft.speakerId !== targetSpeakerId) {
+              targetBox.bodyEl.appendChild(ft.turnEl);
+              scrollBoxToBottom(targetBox.bodyEl);
+              ft.speakerId = targetSpeakerId;
             }
           }
+
+          if (turnOrder >= nextGlobalTurnOrder) {
+            nextGlobalTurnOrder = turnOrder + 1;
+          }
         });
+
+        // 4. Clean empty speaker boxes
+        for (const [sid, box] of Object.entries(speakerBoxes)) {
+          if (box.bodyEl && box.bodyEl.children.length === 0) {
+            box.boxEl.remove();
+            delete speakerBoxes[sid];
+          }
+        }
+
+        // 5. Empty state handling
+        if (Object.keys(finalizedTurns).length === 0) {
+          if (emptyState && !emptyState.parentNode) {
+            speakerContainer.appendChild(emptyState);
+          }
+        } else if (emptyState && emptyState.parentNode) {
+          emptyState.remove();
+        }
+
+        // 6. Keep rawLines perfectly synchronized with finalizedTurns
+        rawLines.length = 0;
+        sorted.forEach(t => {
+          const ft = finalizedTurns[Number(t.turn_order)];
+          if (ft) {
+            rawLines.push({
+              time: fmtTime(),
+              text: ft.text || t.text || '',
+              speakerId: ft.speakerId,
+            });
+          }
+        });
+
+        recalculateSpeakingChart(finalizedTurns);
+        updateSpeakerAvatars();
       }
 
       async function syncFromServer() {
         try {
-          const [uResp, tResp] = await Promise.all([
+          const [uResp, tResp, aResp, rResp] = await Promise.all([
             fetch('/api/registered-users'),
-            fetch('/api/turns')
+            fetch('/api/turns'),
+            fetch('/api/meeting-analytics'),
+            fetch('/api/recording-state')
           ]);
           if (uResp.ok) {
             const uData = await uResp.json();
@@ -1861,6 +2172,36 @@
           if (tResp.ok) {
             const tData = await tResp.json();
             syncTurnsFromServer(tData.turns || []);
+          }
+          if (aResp && aResp.ok) {
+            const aData = await aResp.json();
+            // Restore Wordcloud / Topics from SQLite DB
+            if (Array.isArray(aData.wordcloud)) {
+              if (aData.wordcloud.length > 0) {
+                renderWordCloud(aData.wordcloud);
+              } else {
+                wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
+              }
+            }
+            // Restore Speaker Intelligence Analysis from SQLite DB
+            if (aData.analysis && typeof aData.analysis === 'object' && Object.keys(aData.analysis).length > 0) {
+              if (aData.analysis.overall_summary) {
+                renderOrUpdateMeetingSummary(aData.analysis.overall_summary);
+              }
+              if (Array.isArray(aData.analysis.speakers) && aData.analysis.speakers.length > 0) {
+                aData.analysis.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
+              }
+            } else {
+              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
+            }
+          }
+          if (rResp && rResp.ok) {
+            const rData = await rResp.json();
+            isTranscriptionPaused = !rData.is_transcribing;
+            updateTranscribeButtonUI(rData.is_transcribing);
+            if (isTranscriptionPaused) {
+              setStatus('Paused (Transcribing stopped)');
+            }
           }
         } catch(e) {}
       }
@@ -1901,6 +2242,28 @@
                 }
               } catch(err) {}
             });
+            es.addEventListener('turn_deleted', (e) => {
+              try {
+                const data = JSON.parse(e.data);
+                const to = Number(data.turn_order);
+                const ft = finalizedTurns[to];
+                if (ft) {
+                  if (ft.turnEl && ft.turnEl.parentNode) ft.turnEl.remove();
+                  delete finalizedTurns[to];
+                  // clean empty boxes
+                  for (const [sid, box] of Object.entries(speakerBoxes)) {
+                    if (box.bodyEl && box.bodyEl.children.length === 0) {
+                      box.boxEl.remove();
+                      delete speakerBoxes[sid];
+                    }
+                  }
+                  if (Object.keys(finalizedTurns).length === 0) {
+                    if (emptyState && !emptyState.parentNode) speakerContainer.appendChild(emptyState);
+                  }
+                  recalculateSpeakingChart(finalizedTurns);
+                }
+              } catch(err) {}
+            });
             es.addEventListener('turns_updated', async () => {
               try {
                 const resp = await fetch('/api/turns');
@@ -1909,6 +2272,88 @@
                   syncTurnsFromServer(tData.turns || []);
                 }
               } catch(err) {}
+            });
+            es.addEventListener('wordcloud_updated', (e) => {
+              try {
+                const data = JSON.parse(e.data);
+                if (Array.isArray(data.words) && data.words.length > 0) {
+                  renderWordCloud(data.words);
+                }
+              } catch(err) {}
+            });
+            es.addEventListener('analysis_updated', (e) => {
+              try {
+                const data = JSON.parse(e.data);
+                if (data.overall_summary) {
+                  renderOrUpdateMeetingSummary(data.overall_summary);
+                }
+                if (Array.isArray(data.speakers)) {
+                  data.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
+                }
+              } catch(err) {}
+            });
+            es.addEventListener('wordcloud_cleared', () => {
+              wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
+            });
+            es.addEventListener('analysis_cleared', () => {
+              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
+            });
+            es.addEventListener('recording_state_changed', (e) => {
+              try {
+                const data = JSON.parse(e.data);
+                isTranscriptionPaused = !data.is_transcribing;
+                updateTranscribeButtonUI(data.is_transcribing);
+                if (isTranscriptionPaused) {
+                  setStatus('Paused (Transcribing stopped)');
+                  setInterimText('');
+                  Object.values(activeTurns).forEach(e => e.turnEl.remove());
+                  for (const k of Object.keys(activeTurns)) delete activeTurns[k];
+                } else {
+                  if (listening) setStatus('Listening…');
+                }
+              } catch(err) {}
+            });
+            es.addEventListener('turns_cleared', () => {
+              Object.values(finalizedTurns).forEach(ft => { if (ft.turnEl) ft.turnEl.remove(); });
+              for (const k of Object.keys(finalizedTurns)) delete finalizedTurns[k];
+              for (const [sid, box] of Object.entries(speakerBoxes)) {
+                if (box.boxEl) box.boxEl.remove();
+                delete speakerBoxes[sid];
+              }
+              for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
+              for (const k of Object.keys(turnAudioBuffers)) delete turnAudioBuffers[k];
+              for (const k of Object.keys(activeTurns)) {
+                if (activeTurns[k].turnEl) activeTurns[k].turnEl.remove();
+                delete activeTurns[k];
+              }
+              if (emptyState && !emptyState.parentNode) speakerContainer.appendChild(emptyState);
+              rawLines.length = 0;
+              nextGlobalTurnOrder = 1;
+              recalculateSpeakingChart(finalizedTurns);
+              wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
+              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
+            });
+            es.addEventListener('cleared', () => {
+              Object.values(finalizedTurns).forEach(ft => { if (ft.turnEl) ft.turnEl.remove(); });
+              for (const k of Object.keys(finalizedTurns)) delete finalizedTurns[k];
+              for (const [sid, box] of Object.entries(speakerBoxes)) {
+                if (box.boxEl) box.boxEl.remove();
+                delete speakerBoxes[sid];
+              }
+              for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
+              for (const k of Object.keys(turnAudioBuffers)) delete turnAudioBuffers[k];
+              for (const k of Object.keys(activeTurns)) {
+                if (activeTurns[k].turnEl) activeTurns[k].turnEl.remove();
+                delete activeTurns[k];
+              }
+              if (emptyState && !emptyState.parentNode) speakerContainer.appendChild(emptyState);
+              rawLines.length = 0;
+              registeredUsers = [];
+              nextGlobalTurnOrder = 1;
+              recalculateSpeakingChart(finalizedTurns);
+              updateSpeakerAvatars();
+              wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
+              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
             });
             es.addEventListener('users_updated', async () => {
               try {
@@ -1935,6 +2380,7 @@
       syncFromServer();
 
 
+      // ── Language toggle buttons (Roman / Hinglish | English | Hindi) ─────
       // ── Language toggle buttons ───────────────────────────────────────────
       function setViewMode(mode) {
         viewMode = mode;
@@ -1976,8 +2422,13 @@
       sbClose.addEventListener('click', closeSidebar);
 
       function buildTranscriptText() {
-        if (rawLines.length === 0) return '';
-        return rawLines.map(l => `${speakerName(l.speakerId)}: ${l.text}`).join('\n');
+        const sortedOrders = Object.keys(finalizedTurns).map(Number).sort((a, b) => a - b);
+        if (sortedOrders.length === 0) return '';
+        return sortedOrders.map(to => {
+          const ft = finalizedTurns[to];
+          const spk = speakerName(ft.speakerId) || ft.speakerId || 'Speaker';
+          return `${spk}: ${ft.text || ''}`;
+        }).join('\n');
       }
 
       function getScoreBadgeClass(score) {
@@ -1986,9 +2437,34 @@
         return 'low';
       }
 
+      function getSpeakerWordCount(name) {
+        let count = 0;
+        const target = (name || '').trim().toLowerCase();
+        for (const [to, ft] of Object.entries(finalizedTurns)) {
+          const spkName = (speakerName(ft.speakerId) || '').trim().toLowerCase();
+          const spkId = (ft.speakerId || '').trim().toLowerCase();
+          if (spkName === target || spkId === target || ('speaker ' + spkId) === target) {
+            count += (ft.text || '').trim().split(/\s+/).filter(Boolean).length;
+          }
+        }
+        return count;
+      }
+
       function renderOrUpdateSpeakerCard(spk) {
         const name = (spk.name || 'Unknown Speaker').trim();
         const safeId = 'sb-spk-' + name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+        // Eligibility Check: Registered backend user OR >= 100 words spoken
+        const foundUser = registeredUsers.find(u => (u.name || '').toLowerCase() === name.toLowerCase());
+        const wordCount = getSpeakerWordCount(name);
+        const isEligible = !!foundUser || wordCount >= 100;
+
+        if (!isEligible) {
+          const existingCard = document.getElementById(safeId);
+          if (existingCard) existingCard.remove();
+          return;
+        }
+
         const scoreVal = typeof spk.score === 'number' ? spk.score : (parseFloat(spk.score) || 5.0);
         const score = scoreVal.toFixed(1);
         const badgeClass = getScoreBadgeClass(scoreVal);
@@ -1998,7 +2474,6 @@
         const scoreReason = spk.score_reason || '';
 
         // Avatar lookup
-        const foundUser = registeredUsers.find(u => (u.name || '').toLowerCase() === name.toLowerCase());
         const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'SP';
         const avatarHtml = (foundUser && foundUser.avatar_b64)
           ? `<img class="sb-spk-avatar" src="${foundUser.avatar_b64}" alt="${escapeHtml(name)}">`
@@ -2071,56 +2546,12 @@
       }
 
       async function runAnalysis() {
-        if (isAnalysing) return;
-        const transcript = buildTranscriptText();
-        if (!transcript) {
-          return;
-        }
-
-        isAnalysing = true;
-
-        try {
-          const resp = await fetch('/api/analyse', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ transcript })
-          });
-          if (!resp.ok) throw new Error('Server error ' + resp.status);
-          const data = await resp.json();
-          if (data.error) throw new Error(data.error);
-
-          sbBody.querySelector('.sb-empty')?.remove();
-
-          // Render executive overview
-          if (data.overall_summary) {
-            renderOrUpdateMeetingSummary(data.overall_summary);
-          }
-
-          // Render or update each speaker in-place
-          if (Array.isArray(data.speakers) && data.speakers.length > 0) {
-            data.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
-          }
-        } catch (err) {
-          if (!sbBody.querySelector('.sb-speaker-card')) {
-            sbBody.innerHTML = `<div class="sb-empty"><span class="sb-empty-icon">⚠️</span>${escapeHtml(err.message || 'Analysis unavailable')}</div>`;
-          }
-        } finally {
-          isAnalysing = false;
-        }
+        // Legacy wrapper — triggers unified intelligence
+        runLiveIntelligence();
       }
 
-      function startAnalysisLoop() {
-        stopAnalysisLoop();
-        analysisTimer = setInterval(() => {
-          if (listening && rawLines.length > 0) {
-            runAnalysis();
-          }
-        }, 40000);
-      }
-
-      function stopAnalysisLoop() {
-        if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
-      }
+      function startAnalysisLoop() { /* handled by startIntelligenceLoop */ }
+      function stopAnalysisLoop() { /* handled by stopIntelligenceLoop */ }
 
 
       // ── Download ──────────────────────────────────────────────────────────

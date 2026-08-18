@@ -83,6 +83,7 @@ def init_app_state():
             "predicted_confidence": t.get("predicted_confidence", 0.0),
             "scores": {},
             "tagged_as": t.get("tagged_as"),
+            "is_mixed": bool(t.get("is_mixed", 0)),
         }
     log.info("Initialized app with %d turns from database.", len(turn_store))
 
@@ -236,7 +237,8 @@ def _synthesize_takeaway(sentence: str) -> str:
 
 
 def _fallback_speaker_analysis(transcript: str) -> dict:
-    """Generates a robust, realistic per-speaker evaluation with derived takeaways."""
+    """Generates a robust, realistic per-speaker evaluation with derived takeaways.
+    Includes only speakers who are registered backend profiles OR have spoken at least 100 words."""
     lines = [l.strip() for l in transcript.split("\n") if l.strip()]
     speaker_turns = {}
     for line in lines:
@@ -252,9 +254,22 @@ def _fallback_speaker_analysis(transcript: str) -> dict:
         if text:
             speaker_turns[spk].append(text)
 
+    registered_names = set()
+    try:
+        registered_names = {p["name"].strip().lower() for p in db.get_all_profiles() if p.get("name")}
+    except Exception:
+        pass
+
     speakers_res = []
     for spk, utts in speaker_turns.items():
         all_text = " ".join(utts)
+        raw_word_count = len(all_text.split())
+        is_registered = spk.strip().lower() in registered_names
+
+        # Strict requirement: registered profile OR >= 100 words
+        if not is_registered and raw_word_count < 100:
+            continue
+
         words = [w for w in re.findall(r"\b[A-Za-z]{3,}\b", all_text.lower()) if w not in MASTER_STOPWORDS]
         word_counts = Counter(words)
         top_keywords = [w.capitalize() for w, _ in word_counts.most_common(5)]
@@ -276,7 +291,6 @@ def _fallback_speaker_analysis(transcript: str) -> dict:
         total_words = len(words)
 
         if total_words < 5 or len(unique_words) < 3:
-            # Low substance / filler / gibberish
             score = 2.0
             summary = f"{spk} spoke conversational filler without substantive discussion points."
             key_points = ["Did not make meaningful or actionable contributions to the meeting."]
@@ -306,66 +320,103 @@ def _fallback_speaker_analysis(transcript: str) -> dict:
     }
 
 
+def _filter_eligible_speakers(speakers_list, full_transcript):
+    """Keep only speakers who are registered backend profiles OR have spoken >= 100 words."""
+    if not isinstance(speakers_list, list):
+        return []
+
+    registered_names = set()
+    try:
+        registered_names = {p["name"].strip().lower() for p in db.get_all_profiles() if p.get("name")}
+    except Exception:
+        pass
+
+    spk_word_counts = {}
+    for line in full_transcript.split("\n"):
+        if ":" in line:
+            s_name, s_txt = line.split(":", 1)
+            s_name = s_name.strip().lower()
+            spk_word_counts[s_name] = spk_word_counts.get(s_name, 0) + len(s_txt.split())
+
+    filtered = []
+    for spk in speakers_list:
+        name = (spk.get("name") or "").strip()
+        name_lower = name.lower()
+        is_registered = name_lower in registered_names
+        word_count = spk_word_counts.get(name_lower, 0)
+        if is_registered or word_count >= 100:
+            filtered.append(spk)
+    return filtered
+
+
 @app.route("/api/analyse", methods=["POST"])
 def api_analyse():
-    """Calls Gemini with the transcript and returns per-speaker summaries, key points, and 1-10 value scores."""
+    """Legacy endpoint — redirects to live-intelligence."""
+    return api_live_intelligence()
+
+
+@app.route("/api/wordcloud", methods=["POST"])
+def api_wordcloud():
+    """Legacy endpoint — redirects to live-intelligence."""
+    return api_live_intelligence()
+
+
+@app.route("/api/live-intelligence", methods=["POST"])
+def api_live_intelligence():
+    """Single unified Gemini call every 30 seconds.
+    Returns BOTH discussion topics (7-10 keywords) AND per-speaker analysis in one shot."""
     data = request.get_json(force=True) or {}
     transcript = data.get("transcript", "").strip()
     if not transcript:
-        return jsonify({"error": "No transcript provided."}), 400
+        return jsonify({"topics": [], "overall_summary": "", "speakers": []})
 
-    # Ensure context efficiency for very long meetings while preserving all speakers
+    # Trim to last 200 lines for context efficiency
     lines = transcript.split("\n")
-    if len(lines) > 250:
-        transcript = "\n".join(lines[-250:])
+    if len(lines) > 200:
+        transcript = "\n".join(lines[-200:])
 
     prompt = (
         "You are an expert discourse intelligence analyst evaluating a live multi-speaker meeting.\n"
-        "Analyze this conversation transcript with complete intellectual honesty, objectivity, and realistic rigor.\n\n"
+        "Analyze this conversation transcript and return TWO things in a single JSON response:\n\n"
+        "═══ PART 1: DISCUSSION TOPICS ═══\n"
+        "Extract 7 to 10 concise domain-relevant discussion topics/keywords from the transcript.\n"
+        "Each topic must be a punchy 1-3 word phrase (e.g. 'AI Safety', 'Model Latency', 'Database Indexing').\n"
+        "STRICTLY FORBIDDEN: conversational filler phrases (e.g. 'There is lots', 'Hope it is').\n\n"
+        "═══ PART 2: SPEAKER ANALYSIS ═══\n"
+        "Analyze each speaker with complete intellectual honesty, objectivity, and realistic rigor.\n\n"
+        "CRITICAL SPEAKER INCLUSION RULE:\n"
+        "- ONLY generate a section for speakers who are named participants OR who have spoken at least 100 words.\n"
+        "- COMPLETELY OMIT short generic speakers (e.g. 'Speaker A' with only a few sentences).\n\n"
         "CRITICAL EVALUATION GUIDELINES (DO NOT BE A PEOPLE-PLEASER):\n"
-        "- Be realistic, objective, and strict with your ratings. Do NOT hesitate to give low marks (e.g. 1.0 to 4.0 out of 10).\n"
-        "- If a speaker speaks gibberish, trivial pleasantries, off-topic rambling, repetitive filler, or makes no meaningful sense, explicitly and politely state in their summary that they did not make a meaningful or actionable contribution, and rate them accordingly (1.0 to 3.5).\n"
-        "- High scores (8.0 to 10.0) MUST be strictly reserved for speakers who provided concrete technical facts, actionable decisions, clear solutions, or deep domain expertise.\n"
-        "- Moderate scores (5.0 to 7.5) are for constructive questions, confirmations, and standard discussion.\n\n"
-        "MANDATORY JSON SCHEMA FOR EVERY UNIQUE SPEAKER:\n"
-        "1. 'name': The exact speaker name as shown in the transcript (e.g. 'vinay', 'Speaker A').\n"
-        "2. 'summary': An objective, realistic assessment of what they said and their actual contribution.\n"
-        "3. 'key_points': An array of key points, takeaways, proposals, and facts shared by this speaker (if they spoke low substance, list an honest point like 'No substantive takeaways shared').\n"
-        "4. 'score': A float rating from 1.0 to 10.0 (e.g. 2.5, 8.5) representing the knowledge density, helpfulness, and actionable value of what they said relative to everything they spoke.\n"
-        "5. 'score_reason': A 1-sentence honest explanation of why they earned this exact score.\n"
-        "6. 'keywords': An array of 1 to 5 key domain topics or concepts discussed by this speaker.\n\n"
-        "Also provide an 'overall_summary' (2-3 sentences summarizing the overall meeting).\n\n"
-        "Return ONLY a valid JSON object matching this schema:\n"
+        "- Be realistic, objective, and strict. Low marks (1.0 to 4.0) are fine for low-value contributions.\n"
+        "- High scores (8.0+) ONLY for concrete technical facts, actionable decisions, or deep domain expertise.\n\n"
+        "Return ONLY a valid JSON object matching this exact schema:\n"
         "{\n"
-        '  "overall_summary": "...",\n'
+        '  "topics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6", "Topic 7"],\n'
+        '  "overall_summary": "2-3 sentence meeting summary",\n'
         '  "speakers": [\n'
         "    {\n"
         '      "name": "Speaker Name",\n'
         '      "score": 8.5,\n'
-        '      "score_reason": "...",\n'
-        '      "summary": "...",\n'
-        '      "key_points": ["...", "..."],\n'
-        '      "keywords": ["...", "..."]\n'
+        '      "score_reason": "1-sentence honest explanation",\n'
+        '      "summary": "Objective assessment of their contribution",\n'
+        '      "key_points": ["point 1", "point 2"],\n'
+        '      "keywords": ["keyword1", "keyword2"]\n'
         "    }\n"
         "  ]\n"
         "}\n\n"
         f"Transcript:\n{transcript}"
     )
 
-    raw_json = call_gemini(prompt, response_json=True, timeout=30)
+    raw_json = call_gemini(prompt, response_json=True, timeout=25)
+
+    # Fallback: retry without forced JSON mime type
+    if not raw_json:
+        raw_json = call_gemini(prompt, timeout=25)
+
     if raw_json:
         try:
-            parsed = json.loads(raw_json)
-            if isinstance(parsed, dict) and "speakers" in parsed:
-                return jsonify(parsed)
-        except Exception:
-            pass
-
-    # Fallback retry without forcing json mime-type
-    result = call_gemini(prompt, timeout=30)
-    if result:
-        try:
-            cleaned = result.strip()
+            cleaned = raw_json.strip()
             if cleaned.startswith("```json"):
                 cleaned = cleaned[7:]
             if cleaned.startswith("```"):
@@ -373,13 +424,49 @@ def api_analyse():
             if cleaned.endswith("```"):
                 cleaned = cleaned[:-3]
             parsed = json.loads(cleaned.strip())
-            if isinstance(parsed, dict) and "speakers" in parsed:
+
+            if isinstance(parsed, dict):
+                # ── Process topics into weighted word cloud ──
+                topics = parsed.get("topics", [])
+                if isinstance(topics, list) and len(topics) > 0:
+                    topic_weights = [48, 42, 38, 32, 28, 25, 22, 18, 15, 12]
+                    words = []
+                    for i, t in enumerate(topics[:10]):
+                        if t and isinstance(t, str):
+                            words.append([t.strip(), topic_weights[min(i, len(topic_weights) - 1)]])
+                    if words:
+                        db.set_meeting_meta("wordcloud", words)
+                        broadcast_sse("wordcloud_updated", {"words": words})
+                        parsed["words"] = words
+
+                # ── Process speaker analysis ──
+                if "speakers" in parsed:
+                    parsed["speakers"] = _filter_eligible_speakers(parsed.get("speakers", []), transcript)
+                    db.set_meeting_meta("speaker_analysis", {
+                        "overall_summary": parsed.get("overall_summary", ""),
+                        "speakers": parsed["speakers"]
+                    })
+                    broadcast_sse("analysis_updated", {
+                        "overall_summary": parsed.get("overall_summary", ""),
+                        "speakers": parsed["speakers"]
+                    })
+
                 return jsonify(parsed)
         except Exception:
             pass
 
-    # Built-in fallback analysis so UI never breaks
-    return jsonify(_fallback_speaker_analysis(transcript))
+    # ── Fallback: local extraction ──
+    fallback_words = extract_local_wordcloud(transcript)
+    fallback_analysis = _fallback_speaker_analysis(transcript)
+    db.set_meeting_meta("wordcloud", fallback_words)
+    db.set_meeting_meta("speaker_analysis", fallback_analysis)
+    broadcast_sse("wordcloud_updated", {"words": fallback_words})
+    broadcast_sse("analysis_updated", fallback_analysis)
+    return jsonify({
+        "words": fallback_words,
+        "topics": [w[0] for w in fallback_words],
+        **fallback_analysis
+    })
 
 
 def extract_local_wordcloud(transcript: str):
@@ -465,78 +552,31 @@ def extract_local_wordcloud(transcript: str):
     return [[topic, weights[min(idx, len(weights) - 1)]] for idx, topic in enumerate(found_topics[:10])]
 
 
-@app.route("/api/wordcloud", methods=["POST"])
-def api_wordcloud():
-    """Extracts 3 main topics, 4-5 sub-topics, and other topics using Gemini with structured format."""
+
+@app.route("/api/meeting-analytics", methods=["GET"])
+def api_meeting_analytics():
+    """Returns persistent analytics (wordcloud, analysis summary) directly from SQLite DB."""
+    return jsonify({
+        "wordcloud": db.get_meeting_meta("wordcloud", []),
+        "analysis": db.get_meeting_meta("speaker_analysis", {})
+    })
+
+
+@app.route("/api/recording-state", methods=["GET"])
+def api_get_recording_state():
+    """Returns current transcription active/paused state."""
+    state = db.get_meeting_meta("is_transcribing", True)
+    return jsonify({"is_transcribing": bool(state)})
+
+
+@app.route("/api/set-recording-state", methods=["POST"])
+def api_set_recording_state():
+    """Start or stop transcribing without terminating WebSocket connections."""
     data = request.get_json(force=True) or {}
-    transcript = data.get("transcript", "").strip()
-    if not transcript:
-        return jsonify({"words": []})
-
-    prompt = (
-        "You are an expert discourse analyst analyzing this live meeting transcript.\n\n"
-        "Identify and categorize what the participants are talking about into three distinct levels:\n"
-        "1. 'main_topics': Exactly 3 primary, high-level macro topics being discussed (2 to 4 words each).\n"
-        "2. 'sub_topics': 4 to 5 key sub-topics or specific discussion areas (2 to 4 words each).\n"
-        "3. 'other_topics': 3 to 5 other relevant concepts, keywords, or topics mentioned (2 to 4 words each).\n\n"
-        "RULES:\n"
-        "- Every topic MUST be a meaningful multi-word domain phrase (e.g. 'AI Safety Alignment', 'Superintelligent AI Risks', 'Database Indexing Performance').\n"
-        "- STRICTLY FORBIDDEN: Do not output conversational filler phrases (e.g. 'There is lots', 'Scary secret', 'Track to achieve', 'Hope it is').\n\n"
-        "Return ONLY a valid JSON object matching this exact schema:\n"
-        "{\n"
-        '  "main_topics": ["Main Topic 1", "Main Topic 2", "Main Topic 3"],\n'
-        '  "sub_topics": ["Sub Topic 1", "Sub Topic 2", "Sub Topic 3", "Sub Topic 4", "Sub Topic 5"],\n'
-        '  "other_topics": ["Other Topic 1", "Other Topic 2", "Other Topic 3"]\n'
-        "}\n\n"
-        f"Transcript:\n{transcript}"
-    )
-
-    raw_json = call_gemini(prompt, response_json=True, timeout=15)
-    if not raw_json:
-        raw_json = call_gemini(prompt, timeout=15)
-
-    if raw_json:
-        try:
-            cleaned = raw_json.strip()
-            if cleaned.startswith("```json"):
-                cleaned = cleaned[7:]
-            if cleaned.startswith("```"):
-                cleaned = cleaned[3:]
-            if cleaned.endswith("```"):
-                cleaned = cleaned[:-3]
-            parsed = json.loads(cleaned.strip())
-
-            if isinstance(parsed, dict):
-                main_topics = parsed.get("main_topics", [])
-                sub_topics = parsed.get("sub_topics", [])
-                other_topics = parsed.get("other_topics", [])
-
-                words = []
-                # Main topics: highest weights (48, 42, 38)
-                main_weights = [48, 42, 38]
-                for i, t in enumerate(main_topics[:3]):
-                    if t and isinstance(t, str):
-                        words.append([t.strip(), main_weights[min(i, len(main_weights) - 1)]])
-
-                # Sub topics: medium weights (32, 28, 25, 22, 20)
-                sub_weights = [32, 28, 25, 22, 20]
-                for i, t in enumerate(sub_topics[:5]):
-                    if t and isinstance(t, str):
-                        words.append([t.strip(), sub_weights[min(i, len(sub_weights) - 1)]])
-
-                # Other topics: compact weights (16, 14, 12, 11)
-                other_weights = [16, 14, 12, 11]
-                for i, t in enumerate(other_topics[:5]):
-                    if t and isinstance(t, str):
-                        words.append([t.strip(), other_weights[min(i, len(other_weights) - 1)]])
-
-                if len(words) >= 3:
-                    return jsonify({"words": words})
-        except Exception:
-            pass
-
-    local_list = extract_local_wordcloud(transcript)
-    return jsonify({"words": local_list})
+    is_transcribing = bool(data.get("is_transcribing", True))
+    db.set_meeting_meta("is_transcribing", is_transcribing)
+    broadcast_sse("recording_state_changed", {"is_transcribing": is_transcribing})
+    return jsonify({"status": "ok", "is_transcribing": is_transcribing})
 
 
 # ── Speaker ID & Turn Endpoints ──────────────────────────────────────────────
@@ -584,6 +624,30 @@ def api_create_user():
     try:
         res = speaker_id_engine.create_user(name, avatar_b64=avatar_b64)
         broadcast_sse("users_updated", res)
+        return jsonify(res)
+    except Exception as exc:
+        traceback.print_exc()
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/enroll-user-voice", methods=["POST"])
+def api_enroll_user_voice():
+    """Enroll a user by recording an audio reading (e.g. 10s to 60s essay sample)."""
+    data = request.get_json(force=True) or {}
+    name = (data.get("name") or "").strip()
+    audio_b64 = data.get("audio_b64")
+    if not name or not audio_b64:
+        return jsonify({"error": "name and audio_b64 are required."}), 400
+
+    try:
+        pcm = _decode_pcm_base64(audio_b64)
+        if len(pcm) < int(0.5 * 16000):
+            return jsonify({"error": "Voice sample too short (must be at least 0.5 seconds)."}), 400
+
+        res = speaker_id_engine.enroll_user_long_audio(name, pcm)
+        _recalculate_turn_predictions()
+        broadcast_sse("users_updated", res)
+        broadcast_sse("turns_updated", {})
         return jsonify(res)
     except Exception as exc:
         traceback.print_exc()
@@ -647,16 +711,28 @@ def api_clear_turns():
     PRESERVES all registered user profiles, avatars, and voiceprint centroids in memory and SQLite."""
     turn_store.clear()
     db.clear_all_turns()
+    db.clear_meeting_meta()
     broadcast_sse("turns_cleared", {})
+    broadcast_sse("turns_updated", {})
+    broadcast_sse("wordcloud_cleared", {})
+    broadcast_sse("analysis_cleared", {})
     return jsonify({"status": "turns_cleared", "turns_count": 0})
 
 
 @app.route("/api/clear-all", methods=["POST"])
 def api_clear_all():
+    global _session_cluster_map
     turn_store.clear()
+    _session_cluster_map.clear()
     speaker_id_engine.clear_session()
     db.clear_all_profiles()
+    db.clear_all_turns()
+    db.clear_meeting_meta()
     broadcast_sse("cleared", {})
+    broadcast_sse("turns_cleared", {})
+    broadcast_sse("users_updated", {})
+    broadcast_sse("wordcloud_cleared", {})
+    broadcast_sse("analysis_cleared", {})
     return jsonify({"status": "cleared", "turns_count": 0, "users_count": 0})
 
 
@@ -672,6 +748,9 @@ def _rebuild_all_centroids():
     fallback_grouped = {}
 
     for entry in list(turn_store.values()):
+        if entry.get("is_mixed"):
+            continue  # Exclude mixed / contaminated audio from all centroids
+
         speaker = (entry.get("tagged_as") or "").strip()
         emb = entry.get("embedding")
         if speaker and emb is not None:
@@ -708,6 +787,9 @@ def _update_single_user_centroid(speaker_name):
     fallback_embeddings = []
 
     for entry in turn_store.values():
+        if entry.get("is_mixed"):
+            continue  # Exclude mixed audio
+
         if (entry.get("tagged_as") or "").strip().lower() == name.lower():
             emb = entry.get("embedding")
             if emb is not None:
@@ -725,11 +807,29 @@ def _update_single_user_centroid(speaker_name):
     speaker_id_engine.update_user_centroid(name, embeddings)
 
 
+_session_cluster_map: dict = {}
+
+
+def _update_cluster_map_from_turns():
+    """Update session cluster mapping (e.g. Speaker A -> Vinay) from high-confidence anchor turns."""
+    global _session_cluster_map
+    for entry in turn_store.values():
+        lbl = entry.get("speaker_label")
+        if not lbl:
+            continue
+        if entry.get("tagged_as"):
+            _session_cluster_map[lbl] = entry["tagged_as"]
+        elif entry.get("predicted_speaker") and entry.get("predicted_confidence", 0.0) >= 35.0:
+            _session_cluster_map[lbl] = entry["predicted_speaker"]
+
+
 def _recalculate_turn_predictions():
     """Re-identify all turns against current user centroids and batch-update database."""
+    _update_cluster_map_from_turns()
     batch_updates = []
     for turn_order, entry in list(turn_store.items()):
         emb = entry.get("embedding")
+        lbl = entry.get("speaker_label")
         if emb is not None:
             id_res = speaker_id_engine.identify_embedding(emb)
             scores = id_res.get("scores", {})
@@ -738,15 +838,24 @@ def _recalculate_turn_predictions():
 
             # If no active profiles with centroids exist or top confidence is minimal with no winner
             if not scores or (not id_res.get("winner") and predicted_confidence <= 10.0 and not scores):
-                predicted_speaker = None
-                predicted_confidence = 0.0
+                # Fallback to AssemblyAI cluster inheritance if known
+                if lbl and lbl in _session_cluster_map:
+                    predicted_speaker = _session_cluster_map[lbl]
+                    predicted_confidence = 30.0
+                else:
+                    predicted_speaker = None
+                    predicted_confidence = 0.0
 
             entry["predicted_speaker"] = predicted_speaker
             entry["predicted_confidence"] = predicted_confidence
             entry["scores"] = scores
         else:
-            entry["predicted_speaker"] = None
-            entry["predicted_confidence"] = 0.0
+            if lbl and lbl in _session_cluster_map:
+                entry["predicted_speaker"] = _session_cluster_map[lbl]
+                entry["predicted_confidence"] = 30.0
+            else:
+                entry["predicted_speaker"] = None
+                entry["predicted_confidence"] = 0.0
             entry["scores"] = {}
 
         batch_updates.append((
@@ -778,11 +887,22 @@ def _process_turn_embedding_async(turn_order, audio_b64):
         predicted_speaker = id_res.get("top_match") or id_res.get("winner")
         predicted_confidence = id_res.get("confidence_pct", 0.0)
 
+        entry = turn_store.get(turn_order)
+        lbl = entry.get("speaker_label") if entry else None
+
+        # If neural confidence is high on longer utterance, lock in session cluster mapping
+        if predicted_speaker and predicted_confidence >= 35.0 and lbl:
+            _session_cluster_map[lbl] = predicted_speaker
+
+        # If neural confidence is low on short interjection (<1.5s), inherit session cluster speaker
+        if (not predicted_speaker or predicted_confidence < 15.0) and lbl and lbl in _session_cluster_map:
+            predicted_speaker = _session_cluster_map[lbl]
+            predicted_confidence = 30.0
+
         # Persist the computed embedding so it doesn't need re-extraction on restart
         embedding_json = json.dumps(emb.tolist())
         db.update_turn_embedding(turn_order, embedding_json)
 
-        entry = turn_store.get(turn_order)
         if entry:
             entry["embedding"] = emb
             entry["predicted_speaker"] = predicted_speaker
@@ -890,6 +1010,7 @@ def api_turns():
             "predicted_speaker": t["predicted_speaker"],
             "predicted_confidence": t.get("predicted_confidence", 0.0),
             "scores": entry.get("scores", {}),
+            "is_mixed": bool(t.get("is_mixed", 0)),
             "has_audio": bool(t.get("has_audio")),
         })
     return jsonify({"turns": result})
@@ -914,6 +1035,7 @@ def api_tag_turn_from_admin():
                 "text": db_turn.get("text", ""),
                 "speaker_label": db_turn.get("speaker_label", "A"),
                 "tagged_as": None,
+                "is_mixed": bool(db_turn.get("is_mixed", 0)),
             }
             turn_store[turn_order] = entry
         else:
@@ -923,38 +1045,120 @@ def api_tag_turn_from_admin():
                 "text": "",
                 "speaker_label": "A",
                 "tagged_as": None,
+                "is_mixed": False,
             }
             turn_store[turn_order] = entry
 
-    try:
-        if entry.get("embedding") is None and entry.get("audio_b64"):
-            pcm = _decode_pcm_base64(entry["audio_b64"])
-            if len(pcm) >= int(0.3 * 16000):
-                entry["embedding"] = speaker_id_engine.extract_embedding(pcm)
+    old_speaker = (entry.get("tagged_as") or "").strip()
+    entry["tagged_as"] = speaker_name
+    db.update_turn_tag(turn_order, speaker_name)
 
-        old_speaker = (entry.get("tagged_as") or "").strip()
-        entry["tagged_as"] = speaker_name
-        db.update_turn_tag(turn_order, speaker_name)
+    # 1. INSTANT sub-millisecond SSE broadcast to all connected UIs
+    broadcast_sse("tag_updated", {"turn_order": turn_order, "tagged_as": speaker_name})
+    broadcast_sse("turns_updated", {"turn_order": turn_order})
 
-        if entry.get("embedding") is not None:
-            # Update the new speaker's centroid (includes this turn now)
-            _update_single_user_centroid(speaker_name)
-            # Update the old speaker's centroid (no longer includes this turn)
-            if old_speaker and old_speaker.lower() != speaker_name.lower():
-                _update_single_user_centroid(old_speaker)
-            _recalculate_turn_predictions()
+    # 2. Async background centroid & prediction update
+    def _async_update_centroids():
+        try:
+            if entry.get("embedding") is None and entry.get("audio_b64"):
+                pcm = _decode_pcm_base64(entry["audio_b64"])
+                if len(pcm) >= int(0.3 * 16000):
+                    emb = speaker_id_engine.extract_embedding(pcm)
+                    entry["embedding"] = emb
+                    db.update_turn_embedding(turn_order, json.dumps(emb.tolist()))
 
-        # Instant SSE broadcast
-        broadcast_sse("tag_updated", {"turn_order": turn_order, "tagged_as": speaker_name})
+            if entry.get("embedding") is not None:
+                _update_single_user_centroid(speaker_name)
+                if old_speaker and old_speaker.lower() != speaker_name.lower():
+                    _update_single_user_centroid(old_speaker)
+                _recalculate_turn_predictions()
+                broadcast_sse("users_updated", {})
+        except Exception:
+            pass
 
-        return jsonify({
-            "status": "tagged",
-            "turn_order": turn_order,
-            "speaker_name": speaker_name,
-        })
-    except Exception as exc:
-        traceback.print_exc()
-        return jsonify({"error": str(exc)}), 500
+    _bg_pool.submit(_async_update_centroids)
+
+    return jsonify({
+        "status": "tagged",
+        "turn_order": turn_order,
+        "speaker_name": speaker_name,
+    })
+
+
+@app.route("/api/delete-turn", methods=["POST"])
+def api_delete_turn():
+    """Delete a single turn from SQLite database, in-memory store, and recalculate user centroid."""
+    data = request.get_json(force=True) or {}
+    turn_order = data.get("turn_order")
+    if turn_order is None:
+        return jsonify({"error": "turn_order required"}), 400
+
+    turn_order = int(turn_order)
+    entry = turn_store.pop(turn_order, None)
+    tagged_speaker = (entry.get("tagged_as") or "").strip() if entry else None
+
+    if not tagged_speaker:
+        db_turn = db.get_turn(turn_order)
+        if db_turn:
+            tagged_speaker = (db_turn.get("tagged_as") or "").strip()
+
+    # Delete from SQLite persistent database
+    db.delete_turn(turn_order)
+
+    # If the deleted turn was tagged to a speaker, recompute their centroid without this turn
+    if tagged_speaker:
+        _update_single_user_centroid(tagged_speaker)
+        _recalculate_turn_predictions()
+
+    # Broadcast instant removal to all clients and admin panels
+    broadcast_sse("turn_deleted", {"turn_order": turn_order})
+    broadcast_sse("turns_updated", {"turn_order": turn_order})
+    broadcast_sse("users_updated", {})
+
+    return jsonify({
+        "status": "deleted",
+        "turn_order": turn_order,
+    })
+
+
+@app.route("/api/set-turn-mixed", methods=["POST"])
+def api_set_turn_mixed():
+    """Toggle a turn as mixed/cross-talk speech to exclude or include its embedding in centroids."""
+    data = request.get_json(force=True) or {}
+    turn_order = data.get("turn_order")
+    if turn_order is None:
+        return jsonify({"error": "turn_order required"}), 400
+
+    turn_order = int(turn_order)
+    is_mixed = bool(data.get("is_mixed", False))
+
+    entry = turn_store.get(turn_order)
+    if entry:
+        entry["is_mixed"] = is_mixed
+
+    db.update_turn_mixed(turn_order, 1 if is_mixed else 0)
+
+    # Recompute centroids if this turn has a tagged speaker
+    tagged_speaker = entry.get("tagged_as") if entry else None
+    if not tagged_speaker:
+        db_turn = db.get_turn(turn_order)
+        if db_turn:
+            tagged_speaker = db_turn.get("tagged_as")
+
+    if tagged_speaker:
+        _update_single_user_centroid(tagged_speaker)
+        _recalculate_turn_predictions()
+
+    # Broadcast to admin and clients
+    broadcast_sse("turn_mixed_updated", {"turn_order": turn_order, "is_mixed": is_mixed})
+    broadcast_sse("turns_updated", {"turn_order": turn_order})
+    broadcast_sse("users_updated", {})
+
+    return jsonify({
+        "status": "updated",
+        "turn_order": turn_order,
+        "is_mixed": is_mixed,
+    })
 
 
 if __name__ == "__main__":

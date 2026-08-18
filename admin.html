@@ -98,6 +98,31 @@
       border-color: #fca5a5;
     }
 
+    .btn-transcribe-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      transition: all .15s ease;
+      cursor: pointer;
+    }
+    .btn-transcribe-toggle.running {
+      background: #fef2f2;
+      color: #dc2626;
+      border-color: #fca5a5;
+    }
+    .btn-transcribe-toggle.running:hover {
+      background: #fee2e2;
+    }
+    .btn-transcribe-toggle.paused {
+      background: #f0fdf4;
+      color: #16a34a;
+      border-color: #86efac;
+    }
+    .btn-transcribe-toggle.paused:hover {
+      background: #dcfce7;
+    }
+
     /* ── MAIN BODY ── */
     .main-body {
       flex: 1;
@@ -230,6 +255,53 @@
       font-family: inherit;
     }
     .btn-sm:hover { background: #f1f5f9; }
+
+    .btn-delete-turn {
+      margin-left: auto;
+      color: #dc2626;
+      border-color: #fecaca;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all .15s ease;
+    }
+    .btn-delete-turn:hover {
+      background: #fef2f2;
+      border-color: #f87171;
+      color: #b91c1c;
+    }
+
+    .turn-mixed-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fafbfc;
+      transition: all .15s ease;
+    }
+    .turn-mixed-label:hover {
+      background: #f1f5f9;
+      color: var(--text);
+    }
+    .turn-mixed-label input[type="checkbox"] {
+      accent-color: #ea580c;
+      cursor: pointer;
+      width: 14px;
+      height: 14px;
+    }
+    .turn-badge.mixed {
+      background: #ffedd5;
+      color: #c2410c;
+      font-weight: 600;
+    }
 
     /* ── RIGHT: Registered Profiles Column ── */
     .profiles-col {
@@ -445,6 +517,148 @@
       line-height: 1.6;
     }
 
+    .btn-voice-enroll {
+      padding: 4px 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid #c7d2fe;
+      background: #eef2ff;
+      color: var(--accent);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all .15s ease;
+      margin-left: auto;
+    }
+    .btn-voice-enroll:hover {
+      background: #e0e7ff;
+      border-color: #a5b4fc;
+      transform: scale(1.02);
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .enroll-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 540px;
+      max-width: 92vw;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: modalPop .18s ease-out;
+    }
+    @keyframes modalPop {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .enroll-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+    }
+    .enroll-modal-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .enroll-modal-close {
+      background: none;
+      border: none;
+      font-size: 16px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+    }
+    .enroll-modal-close:hover { color: var(--text); }
+    .enroll-modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .enroll-user-badge {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .enroll-user-badge strong {
+      color: var(--accent);
+      font-size: 14px;
+    }
+    .enroll-instructions {
+      font-size: 12.5px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .enroll-passage {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #334155;
+      max-height: 140px;
+      overflow-y: auto;
+      font-style: italic;
+    }
+    .enroll-visualizer-wrap {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+    .enroll-timer {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-variant-numeric: tabular-nums;
+      color: #38bdf8;
+    }
+    .enroll-status {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .enroll-level-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: #334155;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .enroll-level-bar {
+      height: 100%;
+      width: 0%;
+      background: #22c55e;
+      transition: width .08s linear;
+    }
+    .enroll-modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 6px;
+    }
+
     /* ── FOOTER ── */
     footer {
       border-top: 1px solid var(--border);
@@ -469,6 +683,37 @@
 <body>
   <div class="admin-app">
 
+    <!-- VOICE ENROLLMENT MODAL -->
+    <div class="modal-overlay" id="enrollModalOverlay" style="display:none;">
+      <div class="enroll-modal">
+        <div class="enroll-modal-header">
+          <div class="enroll-modal-title">🎙️ Enroll Voiceprint Centroid</div>
+          <button class="enroll-modal-close" id="btnEnrollClose">✕</button>
+        </div>
+        <div class="enroll-modal-body">
+          <div class="enroll-user-badge">Enrolling Speaker: <strong id="enrollTargetUserName">vinay</strong></div>
+          <div class="enroll-instructions">
+            Have the team member read this sample passage in a clear, natural speaking voice for <strong>30 to 60 seconds</strong>:
+          </div>
+          <div class="enroll-passage">
+            "Global warming is the gradual heating of Earth's climate driven by human activity, primarily fossil fuel burning, which increases heat-trapping greenhouse gas levels in Earth's atmosphere. Rising global temperatures cause glaciers to melt, sea levels to rise, and weather patterns to become more extreme with severe storms, droughts, and heatwaves. To protect our planet, we need to adopt clean renewable energy like solar and wind, conserve natural resources, protect forests, and build sustainable habits for a healthier environment."
+          </div>
+          <div class="enroll-visualizer-wrap">
+            <div class="enroll-timer" id="enrollTimer">00:00 / 01:00</div>
+            <div class="enroll-status" id="enrollStatus">Ready to record</div>
+            <div class="enroll-level-bar-bg">
+              <div class="enroll-level-bar" id="enrollLevelBar"></div>
+            </div>
+          </div>
+          <div class="enroll-modal-actions">
+            <button class="btn btn-primary" id="btnStartEnrollRecord">● Start Recording</button>
+            <button class="btn btn-danger" id="btnStopEnrollRecord" style="display:none;">⏹️ Stop & Save Voiceprint</button>
+            <button class="btn" id="btnCancelEnroll">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Hidden file inputs for avatar upload -->
     <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
     <input type="file" id="newUserAvatarFileInput" accept="image/*" style="display:none">
@@ -478,6 +723,10 @@
       <span class="header-title">DEEBUG</span>
       <span class="header-tag">Admin Panel</span>
       <div class="header-actions">
+        <button class="btn btn-transcribe-toggle running" id="btnToggleTranscribe" title="Pause or resume live transcription without disconnecting WebSocket">
+          <span id="transcribeIcon">⏹️</span>
+          <span id="transcribeText">Stop Transcribing</span>
+        </button>
         <button class="btn btn-danger" id="btnClearTurns">Clear Turns</button>
         <button class="btn btn-danger" id="btnClearAll">Reset Everything</button>
       </div>
@@ -723,6 +972,173 @@
         } catch(e) {}
       }
 
+      // ── Voice Enrollment Modal Logic ──────────────────────────────────────
+      const enrollModalOverlay = document.getElementById('enrollModalOverlay');
+      const enrollTargetUserName = document.getElementById('enrollTargetUserName');
+      const btnEnrollClose = document.getElementById('btnEnrollClose');
+      const btnCancelEnroll = document.getElementById('btnCancelEnroll');
+      const btnStartEnrollRecord = document.getElementById('btnStartEnrollRecord');
+      const btnStopEnrollRecord = document.getElementById('btnStopEnrollRecord');
+      const enrollTimer = document.getElementById('enrollTimer');
+      const enrollStatus = document.getElementById('enrollStatus');
+      const enrollLevelBar = document.getElementById('enrollLevelBar');
+
+      let currentEnrollUser = null;
+      let enrollMediaStream = null;
+      let enrollAudioCtx = null;
+      let enrollProcessor = null;
+      let enrollSource = null;
+      let enrollChunks = [];
+      let enrollInterval = null;
+      let enrollSeconds = 0;
+
+      function openEnrollModal(userName) {
+        currentEnrollUser = userName;
+        enrollTargetUserName.textContent = userName;
+        enrollModalOverlay.style.display = 'flex';
+        resetEnrollModalUI();
+      }
+
+      function closeEnrollModal() {
+        stopEnrollRecording(false);
+        enrollModalOverlay.style.display = 'none';
+        currentEnrollUser = null;
+      }
+
+      function resetEnrollModalUI() {
+        enrollTimer.textContent = '00:00 / 01:00';
+        enrollStatus.textContent = 'Ready to record';
+        enrollStatus.style.color = '#94a3b8';
+        enrollLevelBar.style.width = '0%';
+        btnStartEnrollRecord.style.display = 'inline-flex';
+        btnStopEnrollRecord.style.display = 'none';
+      }
+
+      btnEnrollClose.addEventListener('click', closeEnrollModal);
+      btnCancelEnroll.addEventListener('click', closeEnrollModal);
+
+      async function startEnrollRecording() {
+        try {
+          enrollChunks = [];
+          enrollSeconds = 0;
+          enrollMediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              sampleRate: 16000,
+              channelCount: 1,
+              echoCancellation: true,
+              noiseSuppression: true
+            }
+          });
+
+          enrollAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          enrollSource = enrollAudioCtx.createMediaStreamSource(enrollMediaStream);
+          enrollProcessor = enrollAudioCtx.createScriptProcessor(2048, 1, 1);
+
+          enrollProcessor.onaudioprocess = (e) => {
+            const input = e.inputBuffer.getChannelData(0);
+            let sum = 0;
+            for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+            const rms = Math.sqrt(sum / input.length);
+            const levelPct = Math.min(100, Math.floor(rms * 450));
+            enrollLevelBar.style.width = levelPct + '%';
+            enrollChunks.push(new Float32Array(input));
+          };
+
+          enrollSource.connect(enrollProcessor);
+          enrollProcessor.connect(enrollAudioCtx.destination);
+
+          btnStartEnrollRecord.style.display = 'none';
+          btnStopEnrollRecord.style.display = 'inline-flex';
+          enrollStatus.textContent = 'Recording speech... Read the passage aloud';
+          enrollStatus.style.color = '#22c55e';
+
+          enrollInterval = setInterval(() => {
+            enrollSeconds++;
+            const mm = String(Math.floor(enrollSeconds / 60)).padStart(2, '0');
+            const ss = String(enrollSeconds % 60).padStart(2, '0');
+            enrollTimer.textContent = `${mm}:${ss} / 01:00`;
+            if (enrollSeconds >= 60) {
+              stopEnrollRecording(true);
+            }
+          }, 1000);
+
+        } catch (err) {
+          alert('Microphone access failed: ' + err.message);
+          resetEnrollModalUI();
+        }
+      }
+
+      async function stopEnrollRecording(shouldSave = true) {
+        if (enrollInterval) { clearInterval(enrollInterval); enrollInterval = null; }
+
+        if (enrollProcessor) { enrollProcessor.disconnect(); enrollProcessor = null; }
+        if (enrollSource) { enrollSource.disconnect(); enrollSource = null; }
+        if (enrollAudioCtx) { enrollAudioCtx.close().catch(() => {}); enrollAudioCtx = null; }
+        if (enrollMediaStream) {
+          enrollMediaStream.getTracks().forEach(t => t.stop());
+          enrollMediaStream = null;
+        }
+
+        if (!shouldSave || enrollChunks.length === 0) {
+          resetEnrollModalUI();
+          return;
+        }
+
+        enrollStatus.textContent = 'Processing & generating centroid...';
+        enrollStatus.style.color = '#38bdf8';
+        btnStopEnrollRecord.disabled = true;
+
+        try {
+          let totalLen = 0;
+          for (const c of enrollChunks) totalLen += c.length;
+          const mergedFloat32 = new Float32Array(totalLen);
+          let offset = 0;
+          for (const c of enrollChunks) {
+            mergedFloat32.set(c, offset);
+            offset += c.length;
+          }
+
+          const pcmBuf = new ArrayBuffer(mergedFloat32.length * 2);
+          const view = new DataView(pcmBuf);
+          for (let i = 0; i < mergedFloat32.length; i++) {
+            const s = Math.max(-1, Math.min(1, mergedFloat32[i]));
+            view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+          }
+
+          const bytes = new Uint8Array(pcmBuf);
+          let binary = '';
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          const audioB64 = btoa(binary);
+
+          const resp = await fetch('/api/enroll-user-voice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: currentEnrollUser, audio_b64: audioB64 })
+          });
+
+          if (resp.ok) {
+            const resData = await resp.json();
+            enrollStatus.textContent = `✓ Centroid created from ${resData.duration_sec}s audio!`;
+            enrollStatus.style.color = '#22c55e';
+            await pollUsers();
+            await pollTurns();
+            setTimeout(closeEnrollModal, 1500);
+          } else {
+            const errData = await resp.json().catch(() => ({}));
+            alert('Enrollment failed: ' + (errData.error || 'Unknown error'));
+            resetEnrollModalUI();
+          }
+        } catch (e) {
+          alert('Enrollment error: ' + e.message);
+          resetEnrollModalUI();
+        } finally {
+          btnStopEnrollRecord.disabled = false;
+        }
+      }
+
+      btnStartEnrollRecord.addEventListener('click', startEnrollRecording);
+      btnStopEnrollRecord.addEventListener('click', () => stopEnrollRecording(true));
+
       // ── Poll Registered Users (In-Place Updates) ───────────────────────────
       async function pollUsers() {
         try {
@@ -782,6 +1198,7 @@
                   <div class="profile-name">${escapeHtml(u.name)}</div>
                   <div class="profile-samples">${samplesText}</div>
                 </div>
+                <button class="btn-voice-enroll" data-name="${escapeHtml(u.name)}" title="Record a 30s-60s voice sample for ${escapeHtml(u.name)}">🎙️ Record</button>
                 <div class="profile-status-dot ${hasVp ? 'active' : ''}"></div>
                 <button class="btn-del-profile" title="Delete Profile">✕</button>
               `;
@@ -792,6 +1209,10 @@
                 activeUploadTargetUser = u.name;
                 avatarFileInput.click();
               });
+
+              // Bind record voice button
+              const recordBtn = card.querySelector('.btn-voice-enroll');
+              recordBtn.addEventListener('click', () => openEnrollModal(u.name));
 
               // Bind delete button
               const delBtn = card.querySelector('.btn-del-profile');
@@ -818,6 +1239,12 @@
                 } else if (avatarInner.querySelector('.profile-avatar-img')) {
                   avatarInner.textContent = initials;
                 }
+              }
+
+              const recordBtn = card.querySelector('.btn-voice-enroll');
+              if (recordBtn && !recordBtn.dataset.bound) {
+                recordBtn.dataset.bound = 'true';
+                recordBtn.addEventListener('click', () => openEnrollModal(u.name));
               }
             }
           });
@@ -886,10 +1313,12 @@
             let card = document.getElementById(cardId);
 
             const isTagged = !!t.tagged_as;
+            const isMixed = !!t.is_mixed;
             const currentAssignment = t.tagged_as || t.predicted_speaker || '';
 
             let badgeClass = isTagged ? 'tagged' : (t.predicted_speaker ? 'detected' : '');
             let badgeText = isTagged ? `✓ Tagged: ${t.tagged_as}` : (t.predicted_speaker ? `🎯 Auto: ${t.predicted_speaker} (${t.predicted_confidence}%)` : '');
+            const mixedBadgeHtml = isMixed ? `<span class="turn-badge mixed" title="Excluded from voiceprint centroids">⚠️ Mixed</span>` : '';
 
             if (!card) {
               // Create new turn card
@@ -900,6 +1329,7 @@
                 <div class="turn-header">
                   <span class="turn-num">#${t.turn_order}</span>
                   <span class="turn-spk">Speaker ${t.speaker_label}</span>
+                  ${mixedBadgeHtml}
                   <span class="turn-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
                 </div>
                 <div class="turn-text">${escapeHtml(t.text || '(empty)')}</div>
@@ -907,7 +1337,12 @@
                   <select class="turn-select" data-turn="${t.turn_order}">
                     ${buildSelectOptions(currentAssignment)}
                   </select>
-                  <button class="btn-sm" data-turn="${t.turn_order}">Save</button>
+                  <button class="btn-sm btn-save-turn" data-turn="${t.turn_order}">Save</button>
+                  <label class="turn-mixed-label" title="Mixed audio / cross-talk: Exclude from voiceprint centroid">
+                    <input type="checkbox" class="turn-mixed-cb" data-turn="${t.turn_order}" ${isMixed ? 'checked' : ''}>
+                    <span>Mixed</span>
+                  </label>
+                  <button class="btn-sm btn-delete-turn" data-turn="${t.turn_order}" title="Delete turn from everywhere">🗑️ Delete</button>
                 </div>
               `;
 
@@ -923,20 +1358,37 @@
               bindCardEvents(card, t.turn_order);
             } else {
               // Card already exists — update in-place smoothly
-              const badgeEl = card.querySelector('.turn-badge');
+              const badgeEl = card.querySelector('.turn-badge:not(.mixed)');
               if (badgeEl && badgeEl.textContent !== badgeText) {
                 badgeEl.className = 'turn-badge ' + badgeClass;
                 badgeEl.textContent = badgeText;
               }
 
+              // Update mixed badge in header
+              let mixedBadge = card.querySelector('.turn-badge.mixed');
+              if (isMixed && !mixedBadge) {
+                const header = card.querySelector('.turn-header');
+                const temp = document.createElement('span');
+                temp.className = 'turn-badge mixed';
+                temp.title = 'Excluded from voiceprint centroids';
+                temp.textContent = '⚠️ Mixed';
+                header.insertBefore(temp, header.querySelector('.turn-badge:not(.mixed)'));
+              } else if (!isMixed && mixedBadge) {
+                mixedBadge.remove();
+              }
+
               const selectEl = card.querySelector('.turn-select');
-              // Only update select if user is not actively interacting with it
               if (selectEl && document.activeElement !== selectEl) {
                 const currentHtml = buildSelectOptions(currentAssignment);
                 if (selectEl.dataset.cachedHtml !== currentHtml) {
                   selectEl.innerHTML = currentHtml;
                   selectEl.dataset.cachedHtml = currentHtml;
                 }
+              }
+
+              const mixedCb = card.querySelector('.turn-mixed-cb');
+              if (mixedCb && document.activeElement !== mixedCb) {
+                mixedCb.checked = isMixed;
               }
             }
           });
@@ -958,29 +1410,58 @@
 
       function bindCardEvents(card, turnOrder) {
         const select = card.querySelector('.turn-select');
-        const btn = card.querySelector('.btn-sm');
+        const saveBtn = card.querySelector('.btn-save-turn');
+        const deleteBtn = card.querySelector('.btn-delete-turn');
+        const mixedCb = card.querySelector('.turn-mixed-cb');
 
-        select.addEventListener('change', async () => {
-          if (select.value === '__NEW__') {
-            const newName = prompt('Enter new user name:');
-            if (newName && newName.trim()) {
-              await assignTurn(turnOrder, newName.trim());
-            } else {
-              select.value = '';
+        if (select) {
+          select.addEventListener('change', async () => {
+            if (select.value === '__NEW__') {
+              const newName = prompt('Enter new user name:');
+              if (newName && newName.trim()) {
+                await assignTurn(turnOrder, newName.trim());
+              } else {
+                select.value = '';
+              }
+            } else if (select.value) {
+              await assignTurn(turnOrder, select.value);
             }
-          } else if (select.value) {
-            await assignTurn(turnOrder, select.value);
-          }
-        });
+          });
+        }
 
-        btn.addEventListener('click', async () => {
-          if (select.value && select.value !== '__NEW__') {
-            await assignTurn(turnOrder, select.value);
-          }
-        });
+        if (saveBtn) {
+          saveBtn.addEventListener('click', async () => {
+            if (select && select.value && select.value !== '__NEW__') {
+              await assignTurn(turnOrder, select.value);
+            }
+          });
+        }
+
+        if (mixedCb) {
+          mixedCb.addEventListener('change', async (e) => {
+            await toggleTurnMixed(turnOrder, e.target.checked);
+          });
+        }
+
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm(`Delete turn #${turnOrder}? This will remove it from the transcript, frontend, and speaker voiceprints.`)) return;
+            await deleteTurn(turnOrder, card);
+          });
+        }
       }
 
       async function assignTurn(turnOrder, name) {
+        // Optimistic instant UI update (0ms delay)
+        const card = document.getElementById('t-' + turnOrder);
+        if (card) {
+          const badgeEl = card.querySelector('.turn-badge:not(.mixed)');
+          if (badgeEl) {
+            badgeEl.className = 'turn-badge tagged';
+            badgeEl.textContent = `✓ Tagged: ${name}`;
+          }
+        }
         try {
           const resp = await fetch('/api/tag-turn-from-admin', {
             method: 'POST',
@@ -988,11 +1469,107 @@
             body: JSON.stringify({ turn_order: turnOrder, speaker_name: name })
           });
           if (resp.ok) {
-            await pollUsers();
-            await pollTurns();
+            pollUsers();
+            pollTurns();
           }
         } catch (e) {}
       }
+
+      async function toggleTurnMixed(turnOrder, isMixed) {
+        // Optimistic instant badge update
+        const card = document.getElementById('t-' + turnOrder);
+        if (card) {
+          let mixedBadge = card.querySelector('.turn-badge.mixed');
+          if (isMixed && !mixedBadge) {
+            const header = card.querySelector('.turn-header');
+            const temp = document.createElement('span');
+            temp.className = 'turn-badge mixed';
+            temp.title = 'Excluded from voiceprint centroids';
+            temp.textContent = '⚠️ Mixed';
+            header.insertBefore(temp, header.querySelector('.turn-badge:not(.mixed)'));
+          } else if (!isMixed && mixedBadge) {
+            mixedBadge.remove();
+          }
+        }
+        try {
+          const resp = await fetch('/api/set-turn-mixed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turn_order: turnOrder, is_mixed: isMixed })
+          });
+          if (resp.ok) {
+            pollUsers();
+            pollTurns();
+          }
+        } catch (e) {}
+      }
+
+      async function deleteTurn(turnOrder, card) {
+        // 1. Immediately remove from DOM optimistically
+        const targetCard = card || document.getElementById('t-' + turnOrder);
+        if (targetCard && targetCard.parentNode) {
+          targetCard.remove();
+        }
+        const currentCount = parseInt(turnsCount.textContent || '0');
+        if (currentCount > 0) turnsCount.textContent = currentCount - 1;
+
+        try {
+          const resp = await fetch('/api/delete-turn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turn_order: turnOrder })
+          });
+          if (resp.ok) {
+            pollUsers();
+            pollTurns();
+          } else {
+            console.error('Delete failed with HTTP status:', resp.status);
+          }
+        } catch (e) {
+          console.error('Delete network error:', e);
+        }
+      }
+
+      // ── Transcribing Start/Stop Toggle ───────────────────────────────────
+      const btnToggleTranscribe = document.getElementById('btnToggleTranscribe');
+      const transcribeIcon = document.getElementById('transcribeIcon');
+      const transcribeText = document.getElementById('transcribeText');
+      let isTranscribingState = true;
+
+      function updateTranscribeButtonUI(isTranscribing) {
+        isTranscribingState = isTranscribing;
+        if (isTranscribing) {
+          btnToggleTranscribe.className = 'btn btn-transcribe-toggle running';
+          transcribeIcon.textContent = '⏹️';
+          transcribeText.textContent = 'Stop Transcribing';
+        } else {
+          btnToggleTranscribe.className = 'btn btn-transcribe-toggle paused';
+          transcribeIcon.textContent = '▶️';
+          transcribeText.textContent = 'Start Transcribing';
+        }
+      }
+
+      async function fetchRecordingState() {
+        try {
+          const resp = await fetch('/api/recording-state');
+          if (resp.ok) {
+            const data = await resp.json();
+            updateTranscribeButtonUI(data.is_transcribing);
+          }
+        } catch(e) {}
+      }
+
+      btnToggleTranscribe.addEventListener('click', async () => {
+        const nextState = !isTranscribingState;
+        updateTranscribeButtonUI(nextState);
+        try {
+          await fetch('/api/set-recording-state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_transcribing: nextState })
+          });
+        } catch(e) {}
+      });
 
       // ── Clear Actions ─────────────────────────────────────────────────────
       btnClearTurns.addEventListener('click', async () => {
@@ -1021,29 +1598,51 @@
         } catch (e) {}
       });
 
-      // ── Real-Time EventSource (Instant Updates) ───────────────────────────
+      // ── Real-Time EventSource (Instant Updates — NO POLLING) ──────────────
       function setupEventSource() {
         if (!window.EventSource) return;
-        try {
-          const es = new EventSource('/api/stream-events');
-          es.addEventListener('turn_update', () => { pollTurns(); });
-          es.addEventListener('turns_updated', () => { pollTurns(); });
-          es.addEventListener('tag_updated', () => { pollTurns(); pollUsers(); });
-          es.addEventListener('users_updated', () => { pollUsers(); pollTurns(); });
-          es.addEventListener('turns_cleared', () => { pollTurns(); });
-          es.addEventListener('cleared', () => { pollTurns(); pollUsers(); });
-          es.onerror = () => {
-            es.close();
-          };
-        } catch(e) {}
+        let retryDelay = 1000;
+        function connect() {
+          try {
+            const es = new EventSource('/api/stream-events');
+            es.addEventListener('connected', () => {
+              retryDelay = 1000;
+              // Re-sync once on reconnect
+              pollUsers();
+              pollTurns();
+              fetchRecordingState();
+            });
+            es.addEventListener('turn_update', () => { pollTurns(); });
+            es.addEventListener('turns_updated', () => { pollTurns(); });
+            es.addEventListener('turn_deleted', () => { pollTurns(); pollUsers(); });
+            es.addEventListener('turn_mixed_updated', () => { pollTurns(); pollUsers(); });
+            es.addEventListener('tag_updated', () => { pollTurns(); pollUsers(); });
+            es.addEventListener('users_updated', () => { pollUsers(); pollTurns(); });
+            es.addEventListener('turns_cleared', () => { pollTurns(); });
+            es.addEventListener('cleared', () => { pollTurns(); pollUsers(); });
+            es.addEventListener('recording_state_changed', (e) => {
+              try {
+                const data = JSON.parse(e.data);
+                updateTranscribeButtonUI(data.is_transcribing);
+              } catch(err) {}
+            });
+            es.onerror = () => {
+              es.close();
+              retryDelay = Math.min(retryDelay * 2, 15000);
+              setTimeout(connect, retryDelay);
+            };
+          } catch(e) {
+            setTimeout(connect, retryDelay);
+          }
+        }
+        connect();
       }
-      setupEventSource();
 
-      // ── Initial & Fast Polling (600ms snappy sync) ─────────────────────────
+      // ── Initial load only (no polling — SSE handles all updates) ───────────
+      fetchRecordingState();
       pollUsers();
       pollTurns();
-      setInterval(pollTurns, 600);
-      setInterval(pollUsers, 2000);
+      setupEventSource();
     })();
   </script>
 </body>
