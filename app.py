@@ -197,19 +197,19 @@ def _format_time_str(ts_str):
         return ts_str[:5] if ts_str else ""
 
 
-def call_gemini_37_thinking(prompt, timeout=500):
-    """Executes prompt exclusively on gemini-3.7-flash with thinking mode enabled (4096 thinking budget) and up to 500s timeout."""
+def call_gemini_36_thinking(prompt, timeout=500):
+    """Executes prompt exclusively on gemini-3.6-flash with thinking mode enabled (2048 thinking budget) and up to 500s timeout."""
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or GEMINI_API_KEY
     if not key:
         log.warning("No GEMINI_API_KEY configured.")
         return None
 
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "response_mime_type": "application/json",
-            "thinkingConfig": {"thinkingBudget": 4096}
+            "thinkingConfig": {"thinkingBudget": 2048}
         }
     }
 
@@ -226,16 +226,19 @@ def call_gemini_37_thinking(prompt, timeout=500):
                 if parts and "text" in parts[0]:
                     return parts[0]["text"]
         else:
-            log.warning("gemini-3.7-flash thinking returned status %d: %s", resp.status_code, resp.text[:140])
+            log.warning("gemini-3.6-flash thinking returned status %d: %s", resp.status_code, resp.text[:140])
     except Exception as e:
-        log.warning("gemini-3.7-flash thinking failed: %s", e)
+        log.warning("gemini-3.6-flash thinking failed: %s", e)
 
     return None
 
 
+call_gemini_37_thinking = call_gemini_36_thinking
+
+
 def call_gemini(prompt, response_json=False, timeout=500):
-    """Legacy wrapper directing calls to gemini-3.7-flash with thinking mode."""
-    return call_gemini_37_thinking(prompt, timeout=timeout)
+    """Legacy wrapper directing calls to gemini-3.6-flash with thinking mode."""
+    return call_gemini_36_thinking(prompt, timeout=timeout)
 
 
 def _clean_json_str(raw):
@@ -275,19 +278,20 @@ def _prompt_progression(dialogue_stream, total_turns, r1, r2, r3, r4):
     return (
         "You are an elite timeline analyst extracting the exact chronological topic trajectory of a high-level technical unconference.\n"
         f"METRICS: {total_turns} Dialogue Turns.\n\n"
-        "TASK: Extract the TOPIC CHRONOLOGICAL PROGRESSION across 4 exact sequential 25% quarters based on turn numbers:\n"
-        f"1. Quarter 1 (0% - 25% | {r1}): Identify 3 to 4 specific topics/themes discussed in these exact opening turns.\n"
-        f"2. Quarter 2 (25% - 50% | {r2}): Identify 3 to 4 specific topics/themes discussed in these middle turns.\n"
-        f"3. Quarter 3 (50% - 75% | {r3}): Identify 3 to 4 specific topics/themes discussed in these synthesis turns.\n"
-        f"4. Quarter 4 (75% - 100% | {r4}): Identify 3 to 4 specific topics/themes discussed in these closing turns.\n\n"
+        "TASK: Extract the TOPIC CHRONOLOGICAL PROGRESSION across 4 sequential 25% quarters based on turn numbers.\n"
+        "FOR EACH QUARTER, IDENTIFY EXACTLY 2 SHARP, HIGH-IMPACT KEY TOPICS (3 to 6 words each):\n"
+        f"1. Quarter 1 (0% - 25% | {r1}): Exactly 2 key topics discussed in these opening turns.\n"
+        f"2. Quarter 2 (25% - 50% | {r2}): Exactly 2 key topics discussed in these middle turns.\n"
+        f"3. Quarter 3 (50% - 75% | {r3}): Exactly 2 key topics discussed in these synthesis turns.\n"
+        f"4. Quarter 4 (75% - 100% | {r4}): Exactly 2 key topics discussed in these closing turns.\n\n"
         f"COMPLETE DIALOGUE STREAM:\n{dialogue_stream}\n\n"
         "Return ONLY a valid JSON object matching:\n"
         "{\n"
         '  "topic_progression": [\n'
-        f'    {{"phase": "Phase 1: Initiation", "phase_label": "0% – 25%", "turn_range": "{r1}", "topics": ["Topic A", "Topic B", "Topic C"], "summary": "1-sentence phase overview."}},\n'
-        f'    {{"phase": "Phase 2: Core Debate", "phase_label": "25% – 50%", "turn_range": "{r2}", "topics": ["Topic A", "Topic B", "Topic C"], "summary": "1-sentence phase overview."}},\n'
-        f'    {{"phase": "Phase 3: Deep Synthesis", "phase_label": "50% – 75%", "turn_range": "{r3}", "topics": ["Topic A", "Topic B", "Topic C"], "summary": "1-sentence phase overview."}},\n'
-        f'    {{"phase": "Phase 4: Consensus", "phase_label": "75% – 100%", "turn_range": "{r4}", "topics": ["Topic A", "Topic B", "Topic C"], "summary": "1-sentence phase overview."}}\n'
+        f'    {{"phase": "Phase 1: Initiation", "phase_label": "0% – 25%", "turn_range": "{r1}", "topics": ["Concise Topic 1", "Concise Topic 2"], "summary": "1-sentence phase overview."}},\n'
+        f'    {{"phase": "Phase 2: Core Debate", "phase_label": "25% – 50%", "turn_range": "{r2}", "topics": ["Concise Topic 1", "Concise Topic 2"], "summary": "1-sentence phase overview."}},\n'
+        f'    {{"phase": "Phase 3: Deep Synthesis", "phase_label": "50% – 75%", "turn_range": "{r3}", "topics": ["Concise Topic 1", "Concise Topic 2"], "summary": "1-sentence phase overview."}},\n'
+        f'    {{"phase": "Phase 4: Consensus", "phase_label": "75% – 100%", "turn_range": "{r4}", "topics": ["Concise Topic 1", "Concise Topic 2"], "summary": "1-sentence phase overview."}}\n'
         '  ]\n'
         "}"
     )
@@ -317,8 +321,15 @@ def _prompt_insights(dialogue_stream, total_speakers, total_turns):
 
 # ── 4. PROMPT 4: TOPIC WORD CLOUD & 3 KEY WOW SOUNDBITES ──
 def _prompt_wordcloud_and_soundbites(dialogue_stream, registered_profiles):
+    profile_hints = ""
+    if registered_profiles:
+        profile_hints = "\nREGISTERED PARTICIPANT PROFILES (Match quotes to real participants):\n" + "\n".join(
+            [f"- {p.get('name')}: {p.get('company', '')} ({p.get('role', '')})" for p in registered_profiles if p.get('name')]
+        ) + "\n\n"
+
     return (
         "You are a master quotation curator and vocabulary analyst extracting high-impact perspectives from an unconference.\n\n"
+        f"{profile_hints}"
         "TASK: Extract the TOPIC WORD CLOUD (`word_cloud`) and KEY SOUNDBITES (`voice_spotlights`).\n\n"
         "STRICT REQUIREMENTS:\n"
         "1. WORD CLOUD: Extract 18 to 24 specific architectural concepts, industry terms, and technical patterns with percentage weights from 45% to 95%.\n"
@@ -451,14 +462,14 @@ def api_deep_analysis():
     p3 = _prompt_insights(full_dialogue_stream, total_speakers, total_turns_count)
     p4 = _prompt_wordcloud_and_soundbites(full_dialogue_stream, registered_profiles)
 
-    log.info("Executing 4 specialized Gemini 3.7 Thinking prompts in parallel (timeout=500s)...")
+    log.info("Executing 4 specialized Gemini 3.6 Thinking prompts in parallel (timeout=500s)...")
 
     r1, r2, r3, r4 = {}, {}, {}, {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        f1 = executor.submit(call_gemini_37_thinking, p1, 500)
-        f2 = executor.submit(call_gemini_37_thinking, p2, 500)
-        f3 = executor.submit(call_gemini_37_thinking, p3, 500)
-        f4 = executor.submit(call_gemini_37_thinking, p4, 500)
+        f1 = executor.submit(call_gemini_36_thinking, p1, 500)
+        f2 = executor.submit(call_gemini_36_thinking, p2, 500)
+        f3 = executor.submit(call_gemini_36_thinking, p3, 500)
+        f4 = executor.submit(call_gemini_36_thinking, p4, 500)
 
         r1 = _clean_json_str(f1.result()) or {}
         r2 = _clean_json_str(f2.result()) or {}
@@ -486,7 +497,7 @@ def api_deep_analysis():
     # Save real synthesis directly into SQLite
     db.set_meeting_meta("room_intelligence_poster", final_output)
     db.set_meeting_meta("deep_analysis", final_output)
-    log.info("Successfully synthesized and cached meeting intelligence via Gemini 3.7 Thinking.")
+    log.info("Successfully synthesized and cached meeting intelligence via Gemini 3.6 Thinking.")
     return jsonify(final_output)
 
 

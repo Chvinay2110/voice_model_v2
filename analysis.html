@@ -251,8 +251,8 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      gap: 5px;
+      justify-content: flex-start;
+      gap: 6px;
       overflow: hidden;
     }
 
@@ -262,10 +262,10 @@
       border: 1px solid var(--border);
       border-left: 3px solid var(--accent);
       border-radius: 0 5px 5px 0;
-      padding: 5px 8px;
+      padding: 6px 9px;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 2.5px;
     }
 
     .deep-insight-title {
@@ -279,6 +279,26 @@
       font-size: 10px;
       line-height: 1.35;
       color: #334155;
+    }
+
+    /* ── 1B. CONVERSATION SNAPSHOT WRAPPER ── */
+    .snapshot-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 11px;
+      justify-content: flex-start;
+    }
+
+    .snapshot-p {
+      font-size: 10.5px;
+      line-height: 1.45;
+      color: #334155;
+      margin: 0;
     }
 
     /* ── 2. REAL WORD CLOUD CANVAS CONTAINER ── */
@@ -312,113 +332,37 @@
       pointer-events: none;
     }
 
-    /* ── 3. 4-PHASE TOPIC PROGRESSION TRANSFORMATION GRID ── */
-    .phase-quadrant-container {
+    /* ── 3. REAL 0 TO 100 TOPIC PROGRESSION GRAPH ── */
+    .topic-graph-wrap {
       flex: 1;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      background: #f8fafc;
+      background: #fafbfc;
       border: 1px solid var(--border);
       border-radius: 6px;
-      overflow: hidden;
-    }
-
-    .phase-quadrant {
-      display: flex;
-      flex-direction: column;
-      padding: 7px 8px;
-      gap: 4px;
-      background: #ffffff;
       position: relative;
-    }
-
-    .phase-quadrant.has-divider {
-      border-right: 1.5px dashed #cbd5e1;
-    }
-
-    .phase-quadrant-header {
+      overflow: hidden;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 3px;
     }
 
-    .phase-quarter-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
+    #topicGraphCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .topic-graph-badge {
+      position: absolute;
+      top: 6px;
+      right: 8px;
       font-size: 8.5px;
       font-weight: 700;
-      padding: 1px 4px;
-      border-radius: 3px;
       font-family: 'JetBrains Mono', monospace;
-    }
-
-    .quarter-dot {
-      width: 4.5px;
-      height: 4.5px;
-      border-radius: 50%;
-    }
-
-    .phase-turn-range {
-      font-size: 8px;
-      font-weight: 600;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--muted);
-    }
-
-    .phase-title {
-      font-size: 9.5px;
-      font-weight: 700;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .phase-topics-list {
-      display: flex;
-      flex-direction: column;
-      gap: 2.5px;
-      flex: 1;
-    }
-
-    .phase-topic-pill {
-      display: flex;
-      align-items: flex-start;
-      gap: 3px;
-      font-size: 8.5px;
-      font-weight: 600;
-      color: #334155;
-      background: #f1f5f9;
-      padding: 2px 4px;
+      color: var(--accent);
+      background: #ffffff;
+      padding: 1.5px 6px;
       border-radius: 3px;
-      border: 1px solid #e2e8f0;
-      line-height: 1.15;
-    }
-
-    .topic-bullet {
-      font-size: 7.5px;
-      flex-shrink: 0;
-      margin-top: 0.5px;
-    }
-
-    .topic-text {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .phase-summary {
-      font-size: 7.5px;
-      color: #64748b;
-      line-height: 1.15;
-      font-style: italic;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      margin-top: auto;
+      border: 1px solid var(--border);
+      pointer-events: none;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
 
     /* ── 4. QUOTES & SNAPSHOT ── */
@@ -684,7 +628,7 @@
             <!-- ── LEFT: 4 DEEP INDUSTRY INSIGHTS & OVERVIEW ── -->
             <div class="dash-col">
               <!-- Tile 1: 4 Deep Industry Insights -->
-              <div class="dash-tile" style="flex: 1.25;">
+              <div class="dash-tile" style="flex: 1.15;">
                 <div class="tile-header">
                   <span class="tile-title">Deep Industry Insights</span>
                   <span class="tile-badge">4 Takeaways</span>
@@ -700,13 +644,13 @@
               </div>
 
               <!-- Tile 2: Conversation Snapshot -->
-              <div class="dash-tile" style="flex: 0.75;">
+              <div class="dash-tile" style="flex: 0.85;">
                 <div class="tile-header">
                   <span class="tile-title">Conversation Snapshot</span>
                   <span class="tile-badge">Chronological Flow</span>
                 </div>
-                <div class="tile-content-fit">
-                  ${paragraphs.slice(0, 2).map(p => `<p style="font-size: 10.5px; line-height: 1.35; color: #334155;">${escapeHtml(p)}</p>`).join('')}
+                <div class="snapshot-wrap">
+                  ${paragraphs.slice(0, 2).map(p => `<p class="snapshot-p">${escapeHtml(p)}</p>`).join('')}
                 </div>
               </div>
             </div>
@@ -725,40 +669,17 @@
               </div>
             </div>
 
-            <!-- ── RIGHT: 4-PHASE TOPIC PROGRESSION & SOUNDBITES ── -->
+            <!-- ── RIGHT: 0 TO 100 TOPIC PROGRESSION GRAPH & SOUNDBITES ── -->
             <div class="dash-col">
-              <!-- Tile 3: 4-Phase Topic Progression (3 divider lines for 4 quarters) -->
+              <!-- Tile 3: 0 to 100 Topic Progression Graph -->
               <div class="dash-tile" style="flex: 1.25;">
                 <div class="tile-header">
                   <span class="tile-title">Topic Chronological Progression</span>
-                  <span class="tile-badge">4 Phase Transformations</span>
+                  <span class="tile-badge">0 &rarr; 100 Timeline Graph</span>
                 </div>
-                <div class="phase-quadrant-container">
-                  ${topicProgression.map((ph, idx) => {
-                    const color = PALETTE[idx % PALETTE.length];
-                    const topicsList = Array.isArray(ph.topics) ? ph.topics : (ph.topic ? [ph.topic] : []);
-                    return `
-                      <div class="phase-quadrant ${idx < 3 ? 'has-divider' : ''}">
-                        <div class="phase-quadrant-header">
-                          <div class="phase-quarter-tag" style="background: ${color}15; color: ${color}; border: 1px solid ${color}35;">
-                            <span class="quarter-dot" style="background: ${color};"></span>
-                            ${escapeHtml(ph.phase_label || (idx * 25) + '%–' + ((idx + 1) * 25) + '%')}
-                          </div>
-                          <span class="phase-turn-range">${escapeHtml(ph.turn_range || '')}</span>
-                        </div>
-                        <div class="phase-title" title="${escapeHtml(ph.phase || '')}">${escapeHtml(ph.phase || 'Phase ' + (idx + 1))}</div>
-                        <div class="phase-topics-list">
-                          ${topicsList.map(top => `
-                            <div class="phase-topic-pill" title="${escapeHtml(top)}">
-                              <span class="topic-bullet" style="color: ${color};">▸</span>
-                              <span class="topic-text">${escapeHtml(top)}</span>
-                            </div>
-                          `).join('')}
-                        </div>
-                        ${ph.summary ? `<div class="phase-summary">${escapeHtml(ph.summary)}</div>` : ''}
-                      </div>
-                    `;
-                  }).join('')}
+                <div class="topic-graph-wrap">
+                  <canvas id="topicGraphCanvas"></canvas>
+                  <div class="topic-graph-badge">0% &rarr; 100% TIMELINE</div>
                 </div>
               </div>
 
@@ -817,22 +738,27 @@
 
         // Render Canvas Word Cloud
         initRealWordCloud(wordCloud);
+
+        // Render Canvas 0 to 100 Topic Progression Graph
+        initTopicProgressionGraph(topicProgression, stats.total_turns || 84);
       }
 
-      // ── ROBUST 2D COLLISION-FREE WORD CLOUD ENGINE ──
+      // ── ROBUST 2D COLLISION-FREE WORD CLOUD ENGINE (RETINA 4K) ──
       function initRealWordCloud(words) {
         const canvas = document.getElementById('realWordCloudCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
 
         const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
+        const dpr = window.devicePixelRatio || 2;
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        ctx.scale(dpr, dpr);
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, rect.width, rect.height);
 
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
 
         const sortedWords = [...words].sort((a, b) => (b.weight || 50) - (a.weight || 50));
         const maxW = sortedWords[0]?.weight || 100;
@@ -848,7 +774,7 @@
             y2: box.y2 + padding
           };
 
-          if (b1.x1 < 4 || b1.y1 < 4 || b1.x2 > canvas.width - 4 || b1.y2 > canvas.height - 4) {
+          if (b1.x1 < 4 || b1.y1 < 4 || b1.x2 > rect.width - 4 || b1.y2 > rect.height - 4) {
             return true;
           }
 
@@ -865,16 +791,16 @@
           const rawWeight = item.weight || 60;
           const norm = (rawWeight - minW) / (maxW - minW || 1);
 
-          const fontSize = Math.round(10 + norm * 13); // 10px to 23px
+          const fontSize = Math.round(10.5 + norm * 13.5); // 10.5px to 24px
           const isBold = norm > 0.4 ? 'bold ' : '600 ';
           ctx.font = `${isBold}${fontSize}px 'Plus Jakarta Sans', sans-serif`;
 
           const text = item.text || 'Concept';
           const metrics = ctx.measureText(text);
           const textW = Math.ceil(metrics.width);
-          const textH = Math.ceil(fontSize * 1.15);
+          const textH = Math.ceil(fontSize * 1.18);
 
-          const isVertical = (idx % 4 === 3 && textW < canvas.height * 0.42 && idx > 0);
+          const isVertical = (idx % 4 === 3 && textW < rect.height * 0.42 && idx > 0);
 
           const boxW = isVertical ? textH : textW;
           const boxH = isVertical ? textW : textH;
@@ -918,7 +844,7 @@
         let hoveredIndex = -1;
 
         function drawCloud() {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.clearRect(0, 0, rect.width, rect.height);
 
           placedBoxes.forEach((box, i) => {
             ctx.save();
@@ -956,6 +882,190 @@
             canvas.style.cursor = hoveredIndex !== -1 ? 'pointer' : 'default';
             drawCloud();
           }
+        });
+      }
+
+      // ── ULTRA HIGH-QUALITY VERTICAL ASCENDING 0 TO 100 PROGRESSION GRAPH (4K RETINA & FULLY RESPONSIVE) ──
+      function initTopicProgressionGraph(phases, totalTurns) {
+        const canvas = document.getElementById('topicGraphCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+
+        const dpr = window.devicePixelRatio || 2;
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        ctx.scale(dpr, dpr);
+
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        const pad = { top: 24, bottom: 24, left: 14, right: 14 };
+        const w = rect.width - pad.left - pad.right;
+        const h = rect.height - pad.top - pad.bottom;
+
+        const centerX = pad.left + w / 2;
+        const startY = pad.top + h - 8; // 0% at bottom
+        const endY = pad.top + 10;      // 100% at top
+
+        const count = Math.max(1, (phases || []).length || 4);
+        const availableHeight = startY - endY;
+        const stepY = availableHeight / count;
+
+        // Dynamic responsive card geometry based on available canvas space
+        const cardW = Math.min(230, Math.max(120, (w / 2) - 32));
+        const cardH = Math.min(54, Math.max(38, stepY * 0.78));
+
+        // 1. Draw Sleek Vertical Guideline Track (0% -> 100%)
+        const spineGrad = ctx.createLinearGradient(0, startY, 0, endY);
+        spineGrad.addColorStop(0, '#2563eb');
+        spineGrad.addColorStop(0.33, '#475569');
+        spineGrad.addColorStop(0.66, '#059669');
+        spineGrad.addColorStop(1, '#d97706');
+
+        // Outer glow track
+        ctx.beginPath();
+        ctx.moveTo(centerX, startY);
+        ctx.lineTo(centerX, endY);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+
+        // Active gradient spine
+        ctx.beginPath();
+        ctx.moveTo(centerX, startY);
+        ctx.lineTo(centerX, endY);
+        ctx.strokeStyle = spineGrad;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // 0% Start Tag Badge at bottom
+        ctx.font = '700 8.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('0% START', centerX, startY + 5);
+
+        // 100% Conclusion Tag Badge at top
+        ctx.font = '700 8.5px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#0f172a';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('100% CONCLUSION', centerX, endY - 5);
+
+        // 2. Render 4 Milestones & Alternating Left/Right High-Resolution Cards
+        (phases || []).forEach((ph, idx) => {
+          const nodeY = startY - (idx + 0.5) * stepY;
+          const isLeft = idx % 2 === 0; // 0 & 2 on LEFT, 1 & 3 on RIGHT
+          const baseColor = PALETTE[idx % PALETTE.length];
+
+          // Outer glowing halo ring on center node
+          ctx.beginPath();
+          ctx.arc(centerX, nodeY, 8, 0, Math.PI * 2);
+          ctx.fillStyle = `${baseColor}20`;
+          ctx.fill();
+
+          // Solid Inner Node Marker
+          ctx.beginPath();
+          ctx.arc(centerX, nodeY, 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = baseColor;
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+
+          // Milestone Percentage Pill on Center Spine
+          const pctText = `${(idx + 1) * 25}%`;
+          ctx.font = '700 7px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(pctText, centerX, nodeY);
+
+          // Curved Smooth Leader Branch to Card
+          const branchEndX = isLeft ? centerX - 24 : centerX + 24;
+          ctx.beginPath();
+          ctx.moveTo(centerX + (isLeft ? -5 : 5), nodeY);
+          ctx.lineTo(branchEndX, nodeY);
+          ctx.strokeStyle = baseColor;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Branch Anchor Dot
+          ctx.beginPath();
+          ctx.arc(branchEndX, nodeY, 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = baseColor;
+          ctx.fill();
+
+          // Card Coordinates
+          const cardX = isLeft ? (branchEndX - cardW) : branchEndX;
+          const cardY = nodeY - cardH / 2;
+
+          // Draw Card Shadow & Background Box
+          ctx.save();
+          ctx.shadowColor = 'rgba(15, 23, 42, 0.05)';
+          ctx.shadowBlur = 6;
+          ctx.shadowOffsetY = 1.5;
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.roundRect(cardX, cardY, cardW, cardH, 5);
+          ctx.fill();
+          ctx.restore();
+
+          // Card Border
+          ctx.strokeStyle = `${baseColor}40`;
+          ctx.lineWidth = 1.1;
+          ctx.stroke();
+
+          // Distinct Accent Vertical Color Bar on outer edge
+          ctx.fillStyle = baseColor;
+          ctx.beginPath();
+          if (isLeft) {
+            ctx.roundRect(cardX + cardW - 3, cardY, 3, cardH, [0, 5, 5, 0]);
+          } else {
+            ctx.roundRect(cardX, cardY, 3, cardH, [5, 0, 0, 5]);
+          }
+          ctx.fill();
+
+          // Card Header: Quarter Tag Badge + Turn Range
+          const contentX = isLeft ? cardX + 7 : cardX + 9;
+          const maxTextW = cardW - 14;
+
+          const isCompact = cardH < 46;
+          const headerSize = isCompact ? '7px' : '7.5px';
+          const titleSize = isCompact ? '8px' : '8.5px';
+          const bulletSize = isCompact ? '7px' : '7.5px';
+
+          ctx.font = `700 ${headerSize} "JetBrains Mono", monospace`;
+          ctx.fillStyle = baseColor;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          const qBadge = ph.phase_label || `${idx*25}%–${(idx+1)*25}%`;
+          const tRange = ph.turn_range || '';
+          ctx.fillText(`${qBadge}  ·  ${tRange}`, contentX, cardY + (isCompact ? 4 : 5));
+
+          // Phase Title
+          ctx.font = `bold ${titleSize} "Plus Jakarta Sans", sans-serif`;
+          ctx.fillStyle = '#0f172a';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          const rawTitle = (ph.phase || `Phase ${idx+1}`).replace(/^Phase \d+:\s*/i, '');
+          ctx.fillText(rawTitle, contentX, cardY + (isCompact ? 13 : 15), maxTextW);
+
+          // 2 Key Topic Bullets (Full visibility, responsive text)
+          const topicsList = Array.isArray(ph.topics) ? ph.topics : (ph.topic ? [ph.topic] : []);
+          const top1 = topicsList[0] || 'Core Discussion Focus';
+          const top2 = topicsList[1] || 'Architectural Consensus';
+
+          ctx.font = `600 ${bulletSize} "Plus Jakarta Sans", sans-serif`;
+          ctx.fillStyle = '#334155';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+
+          ctx.fillText(`▸ ${top1}`, contentX, cardY + (isCompact ? 23 : 26), maxTextW);
+          ctx.fillText(`▸ ${top2}`, contentX, cardY + (isCompact ? 32 : 36), maxTextW);
         });
       }
 
@@ -997,6 +1107,18 @@
           `;
         }
       }
+
+      // Responsive redraw on container/window resize
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          if (roomData && roomData.exists) {
+            initRealWordCloud(roomData.word_cloud || []);
+            initTopicProgressionGraph(roomData.topic_progression || [], roomData.room_stats?.total_turns || 84);
+          }
+        }, 100);
+      });
 
       window.triggerRegen = () => loadData(true);
       btnRegenerate.addEventListener('click', () => loadData(true));
