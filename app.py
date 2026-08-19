@@ -166,10 +166,47 @@ def analysis_page():
 # GATHERING OF LEADING MINDS: KNOWLEDGE & PERSPECTIVE SYNTHESIS ENGINE
 # ══════════════════════════════════════════════════════════════════════════
 
+def _load_all_turns():
+    """Loads all turns from SQLite sorted chronologically by turn_order with timestamps."""
+    raw = db.get_turns_lightweight()
+    raw.sort(key=lambda x: x.get("turn_order", 0))
+    turns = []
+    for r in raw:
+        spk = r.get("tagged_as") or r.get("predicted_speaker") or r.get("speaker_label") or "Speaker A"
+        turns.append({
+            "turn_order": r.get("turn_order"),
+            "speaker": spk,
+            "text": r.get("text", ""),
+            "created_at": r.get("created_at", "")
+        })
+    return turns
+
+
+def _format_time_str(ts_str):
+    """Formats SQLite timestamp into clean HH:MM AM/PM."""
+    if not ts_str:
+        return ""
+    try:
+        # Expected formats: 'YYYY-MM-DD HH:MM:SS' or ISO
+        parts = ts_str.strip().split()
+        if len(parts) >= 2:
+            time_part = parts[1][:5] # 'HH:MM'
+            h, m = map(int, time_part.split(':'))
+            suffix = "AM" if h < 12 else "PM"
+            h12 = h % 12 or 12
+            return f"{h12}:{m:02d} {suffix}"
+        return ts_str[:5]
+    except Exception:
+        return ts_str[:5] if ts_str else ""
+
+
 def _build_large_room_discourse_prompt(all_turns, registered_profiles):
     """Constructs a high-precision, multi-section discourse intelligence prompt for Gemini."""
     transcript_lines = []
     speaker_stats = {}
+
+    start_time_str = _format_time_str(all_turns[0].get("created_at")) if all_turns else "12:00 PM"
+    end_time_str = _format_time_str(all_turns[-1].get("created_at")) if all_turns else "12:45 PM"
 
     for idx, t in enumerate(all_turns, 1):
         spk = t.get("speaker", "Speaker A").strip()
@@ -177,9 +214,10 @@ def _build_large_room_discourse_prompt(all_turns, registered_profiles):
         display_name = prof.get("name", spk)
         company = prof.get("company_name", "")
         company_tag = f" ({company})" if company else ""
+        time_tag = f" [{_format_time_str(t.get('created_at'))}]" if t.get('created_at') else ""
         text = t.get("text", "").strip()
         if text:
-            transcript_lines.append(f"[Turn {idx}] [{display_name}{company_tag}]: {text}")
+            transcript_lines.append(f"[Turn {idx}{time_tag}] [{display_name}{company_tag}]: {text}")
             if display_name not in speaker_stats:
                 speaker_stats[display_name] = {"company": company, "words": 0, "turns": 0}
             speaker_stats[display_name]["words"] += len(text.split())
@@ -197,21 +235,21 @@ def _build_large_room_discourse_prompt(all_turns, registered_profiles):
         "   - MUST FOLLOW EXACT CHRONOLOGICAL ORDER: Capture how the gathering started, what core problem/topic was addressed first, how the dialogue evolved into subsequent subjects, and where the room concluded.\n"
         "   - OBJECTIVE NARRATIVE STYLE: Do NOT say 'Speaker A said this, then Speaker B argued that'. Write as a unified knowledge trajectory (e.g. 'The session began with an evaluation of [Topic 1], assessing [core challenge]. The dialogue transitioned into [Topic 2], weighing [critical trade-offs], and concluded with [strategic alignment on Topic 3]').\n"
         "   - STRICT WORD BUDGET: Exactly 2 compact paragraphs, 75 to 95 words TOTAL. Zero filler, maximum information density so it fits a single-screen poster without scrolling.\n\n"
-        "2. KEY SOUNDBITES (`voice_spotlights`):\n"
+        "2. TOPIC CHRONOLOGICAL PROGRESSION (`topic_progression`):\n"
+        "   - Map the entire gathering into 3 to 4 sequential chronological phases from start to end.\n"
+        f"   - USE REAL TIME RANGES: Use clock times (e.g. '{start_time_str} – 12:20 PM', '12:20 PM – 12:35 PM', '12:35 PM – {end_time_str}') for `time_range` instead of turn counts.\n"
+        "   - For each phase, specify: phase name, the time_range, the main topic explored, and a crisp 1-sentence takeaway.\n\n"
+        "3. KEY SOUNDBITES (`voice_spotlights`):\n"
         "   - Extract EXACTLY 3 MEMORABLE, WOW-FACTOR SOUNDBITES.\n"
         "   - These must be profound, insightful, high-gravitas statements that anyone who missed the gathering would regret not hearing (e.g. 'AI will replace 40 percent of our operational workforce within 18 months, forcing a total rewrite of our org chart').\n"
         "   - Include the exact speaker name and their domain/company.\n\n"
-        "3. TOP GUEST VOICES (`speakers`):\n"
-        "   - Select the TOP 3 MOST VALUABLE GUESTS based on QUALITY and depth of intellectual thought (not just turn count).\n"
-        "   - For each guest, write a crisp 1 to 2 sentence synthesis of their strategic thesis and contribution (NO quotation marks, pure substantive contribution).\n"
-        "   - Assign a quality score from 8.5 to 9.8.\n\n"
         "4. DEEP INDUSTRY INSIGHTS (`deep_insights`):\n"
         "   - Extract EXACTLY 4 STRUCTURAL INDUSTRY INSIGHTS.\n"
         "   - Must reveal deep-level structural market, technical, or architectural shifts uncovered by the gathering (not generic surface-level observations).\n"
         "   - Format each with a sharp Title + a 2-sentence deep analytical finding.\n\n"
         "5. TOPIC WORD CLOUD (`word_cloud`):\n"
-        "   - 12 to 16 specific industry terms, architectural patterns, and debated concepts with exact percentage weights (from 50% to 95%).\n\n"
-        f"GATHERING METRICS: Turns: {len(all_turns)} | Words: {total_words} | Speakers: {total_speakers}\n\n"
+        "   - 18 to 24 specific industry terms, architectural patterns, and debated concepts with exact percentage weights (from 45% to 95%).\n\n"
+        f"GATHERING METRICS: Turns: {len(all_turns)} | Words: {total_words} | Speakers: {total_speakers} | Time Window: {start_time_str} to {end_time_str}\n\n"
         "COMPLETE DIALOGUE STREAM:\n"
         "==================== BEGIN DIALOGUE ====================\n"
         f"{full_dialogue_stream}\n"
@@ -226,6 +264,11 @@ def _build_large_room_discourse_prompt(all_turns, registered_profiles):
         '    "topics_count": 4\n'
         "  },\n"
         '  "executive_synthesis": "Concise chronological narrative (75-95 words, 2 paragraphs).",\n'
+        '  "topic_progression": [\n'
+        f'    {{"phase": "Opening Catalyst", "time_range": "{start_time_str} - 12:20 PM", "topic": "Local Storage & Persistence", "summary": "Evaluated offline data ownership and eliminating cloud round-trips."}},\n'
+        '    {"phase": "Core Debate", "time_range": "12:20 PM - 12:35 PM", "topic": "Single-Viewport Information Density", "summary": "Weighed visual layout density and scroll-free executive dashboards."},\n'
+        f'    {{"phase": "Strategic Alignment", "time_range": "12:35 PM - {end_time_str}", "topic": "Incremental Caching & Deployment", "summary": "Consensus on differential state updates and secure deployment."}}\n'
+        '  ],\n'
         '  "deep_insights": [\n'
         '    {"title": "Structural Insight 1", "insight": "2-sentence deep structural market or technical revelation."},\n'
         '    {"title": "Structural Insight 2", "insight": "2-sentence deep structural market or technical revelation."},\n'
@@ -233,26 +276,27 @@ def _build_large_room_discourse_prompt(all_turns, registered_profiles):
         '    {"title": "Structural Insight 4", "insight": "2-sentence deep structural market or technical revelation."}\n'
         "  ],\n"
         '  "word_cloud": [\n'
-        '    {"text": "Core Concept 1", "weight": 95},\n'
-        '    {"text": "Core Concept 2", "weight": 90},\n'
-        '    {"text": "Core Concept 3", "weight": 85},\n'
-        '    {"text": "Core Concept 4", "weight": 80},\n'
-        '    {"text": "Core Concept 5", "weight": 75},\n'
-        '    {"text": "Core Concept 6", "weight": 70},\n'
-        '    {"text": "Core Concept 7", "weight": 65},\n'
-        '    {"text": "Core Concept 8", "weight": 60},\n'
-        '    {"text": "Core Concept 9", "weight": 55},\n'
-        '    {"text": "Core Concept 10", "weight": 50}\n'
+        '    {"text": "SQLite Persistence", "weight": 95},\n'
+        '    {"text": "Local Data Storage", "weight": 92},\n'
+        '    {"text": "UI Redesign", "weight": 88},\n'
+        '    {"text": "Zero Cloud Leaks", "weight": 85},\n'
+        '    {"text": "Incremental Caching", "weight": 82},\n'
+        '    {"text": "Transcript Stream", "weight": 80},\n'
+        '    {"text": "Speaker Identification", "weight": 76},\n'
+        '    {"text": "Desktop Layout", "weight": 74},\n'
+        '    {"text": "Offline Retention", "weight": 70},\n'
+        '    {"text": "Edge Processing", "weight": 68},\n'
+        '    {"text": "CSS Overflow Control", "weight": 65},\n'
+        '    {"text": "Zero Scroll UI", "weight": 62},\n'
+        '    {"text": "Audio Vectors", "weight": 58},\n'
+        '    {"text": "Data Sovereignty", "weight": 55},\n'
+        '    {"text": "Contextual Timeline", "weight": 52},\n'
+        '    {"text": "State Delta", "weight": 48}\n'
         "  ],\n"
         '  "voice_spotlights": [\n'
         '    {"speaker": "Full Name", "company": "Company / Domain", "quote": "Profound, high-gravitas quote", "context": "Strategic context."},\n'
         '    {"speaker": "Full Name", "company": "Company / Domain", "quote": "Profound, high-gravitas quote", "context": "Strategic context."},\n'
         '    {"speaker": "Full Name", "company": "Company / Domain", "quote": "Profound, high-gravitas quote", "context": "Strategic context."}\n'
-        "  ],\n"
-        '  "speakers": [\n'
-        '    {"name": "Top Guest 1 Name", "company": "Company", "contribution_summary": "1-2 sentence synthesis of their strategic thesis.", "score": 9.6},\n'
-        '    {"name": "Top Guest 2 Name", "company": "Company", "contribution_summary": "1-2 sentence synthesis of their strategic thesis.", "score": 9.2},\n'
-        '    {"name": "Top Guest 3 Name", "company": "Company", "contribution_summary": "1-2 sentence synthesis of their strategic thesis.", "score": 8.9}\n'
         "  ]\n"
         "}"
     )
@@ -425,6 +469,26 @@ def api_deep_analysis():
                 "company": "Infrastructure",
                 "quote": "Incremental delta computation isn't an optimization—at 700+ turns, it's the difference between real-time and total stall.",
                 "context": "Driving principle for speech processing pipeline."
+            }
+        ],
+        "topic_progression": [
+            {
+                "phase": "Opening Catalyst",
+                "turn_range": f"Turns 1–{max(1, len(all_turns)//3)}",
+                "topic": "Local SQLite Persistence & Storage",
+                "summary": "Assessed offline data ownership, zero cloud leaks, and eliminating round-trip latency."
+            },
+            {
+                "phase": "Architectural Debate",
+                "turn_range": f"Turns {len(all_turns)//3 + 1}–{2 * len(all_turns)//3}",
+                "topic": "High-Density Single-Viewport UI",
+                "summary": "Weighed visual layout density and scroll-free executive presentation."
+            },
+            {
+                "phase": "Strategic Alignment",
+                "turn_range": f"Turns {2 * len(all_turns)//3 + 1}–{len(all_turns)}",
+                "topic": "Incremental Delta Caching & Scaling",
+                "summary": "Consensus on differential state updates to prevent redundant full-dialogue compute."
             }
         ],
         "speaker_shares": speaker_shares,

@@ -186,7 +186,7 @@
     /* ── MAIN 3-COLUMN MID SECTION ── */
     .dashboard-mid {
       display: grid;
-      grid-template-columns: 32% 38% 30%;
+      grid-template-columns: 31% 37% 32%;
       gap: 8px;
       min-height: 0;
       height: 100%;
@@ -312,7 +312,38 @@
       pointer-events: none;
     }
 
-    /* ── 3. QUOTES & SNAPSHOT ── */
+    /* ── 3. REAL TOPIC PROGRESSION STREAMGRAPH (CANVAS CHART) ── */
+    .streamgraph-wrap {
+      flex: 1;
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    #streamgraphCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .streamgraph-badge {
+      position: absolute;
+      bottom: 6px;
+      right: 8px;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--muted);
+      background: #ffffff;
+      padding: 1px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      pointer-events: none;
+    }
+
+    /* ── 4. QUOTES & SNAPSHOT ── */
     .quote-item {
       background: #f8fafc;
       border: 1px solid var(--border);
@@ -339,7 +370,7 @@
       justify-content: space-between;
     }
 
-    /* ── 4. BOTTOM SPEAKER PARTICIPATION GRAPH (TALK TIME) ── */
+    /* ── 5. BOTTOM SPEAKER PARTICIPATION GRAPH (TALK TIME) ── */
     .bottom-speaker-bar {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -504,7 +535,7 @@
             <div class="empty-tile">
               <strong style="font-size: 14px; color: var(--text);">No Synthesis Generated Yet</strong>
               <p style="font-size: 11.5px; max-width: 400px;">
-                Synthesize all conversations, industry insights, word clouds, and speaker talk distribution.
+                Synthesize all conversations, topic progression streamgraph, industry insights, and speaker talk distribution.
               </p>
               <button class="btn btn-primary" onclick="window.triggerRegen()" style="margin-top: 4px;">
                 Generate Poster
@@ -537,32 +568,51 @@
           ? data.word_cloud
           : [
               { text: "SQLite Persistence", weight: 95 },
-              { text: "Zero Cloud Leaks", weight: 90 },
-              { text: "UI Density", weight: 85 },
-              { text: "Local Caching", weight: 80 },
-              { text: "Speaker Identification", weight: 75 },
-              { text: "Desktop Layout", weight: 70 },
-              { text: "Offline Retention", weight: 65 },
-              { text: "Real-time Streaming", weight: 60 },
-              { text: "Edge Processing", weight: 58 },
-              { text: "Zero Scroll UI", weight: 55 },
-              { text: "Audio Vectors", weight: 52 },
-              { text: "State Delta", weight: 50 }
+              { text: "Local Data Storage", weight: 92 },
+              { text: "UI Redesign", weight: 88 },
+              { text: "Zero Cloud Leaks", weight: 85 },
+              { text: "Incremental Caching", weight: 82 },
+              { text: "Transcript Stream", weight: 80 },
+              { text: "Speaker Identification", weight: 76 },
+              { text: "Desktop Layout", weight: 74 },
+              { text: "Offline Retention", weight: 70 },
+              { text: "Edge Processing", weight: 68 },
+              { text: "CSS Overflow Control", weight: 65 },
+              { text: "Zero Scroll UI", weight: 62 },
+              { text: "Audio Vectors", weight: 58 },
+              { text: "Data Sovereignty", weight: 55 },
+              { text: "Contextual Timeline", weight: 52 },
+              { text: "State Delta", weight: 48 },
+              { text: "Real-time Streaming", weight: 45 },
+              { text: "Local Caching", weight: 42 }
             ];
 
         const defaultQuotes = [
-          { speaker: (data.speakers?.[0]?.name) || "Lead Architect", company: "System Engineering", quote: "If your data layer relies on constant cloud round-trips, you don't own your latency—your network provider does." },
-          { speaker: (data.speakers?.[1]?.name) || "Product Lead", company: "Interface Architecture", quote: "Decision makers don't want scroll fatigue; they want high-density visual intelligence visible in a single glance." },
-          { speaker: (data.speakers?.[2]?.name) || "Tech Lead", company: "Infrastructure", quote: "Incremental delta computation isn't an optimization—at 700+ turns, it's the difference between real-time and total stall." }
+          { speaker: "Lead Architect", company: "System Engineering", quote: "If your data layer relies on constant cloud round-trips, you don't own your latency—your network provider does." },
+          { speaker: "Product Lead", company: "Interface Architecture", quote: "Decision makers don't want scroll fatigue; they want high-density visual intelligence visible in a single glance." },
+          { speaker: "Tech Lead", company: "Infrastructure", quote: "Incremental delta computation isn't an optimization—at 700+ turns, it's the difference between real-time and total stall." }
         ];
 
         const voiceSpotlights = (Array.isArray(data.voice_spotlights) && data.voice_spotlights.length > 0)
           ? data.voice_spotlights.slice(0, 3)
           : defaultQuotes;
 
+        const defaultProgression = [
+          { phase: "Opening Catalyst", time_range: "12:00 PM – 12:18 PM", topic: "Local Storage & Persistence", summary: "Evaluated offline data ownership and eliminating cloud round-trip latency." },
+          { phase: "Architectural Debate", time_range: "12:18 PM – 12:35 PM", topic: "Single-Viewport UI Density", summary: "Weighed visual layout density and scroll-free presentation for decision makers." },
+          { phase: "Strategic Alignment", time_range: "12:35 PM – 12:45 PM", topic: "Incremental Delta Caching", summary: "Consensus on differential state updates to prevent redundant compute." }
+        ];
+
+        const topicProgression = (Array.isArray(data.topic_progression) && data.topic_progression.length > 0)
+          ? data.topic_progression.slice(0, 3)
+          : defaultProgression;
+
         const speakerShares = Array.isArray(data.speaker_shares) && data.speaker_shares.length > 0
           ? data.speaker_shares
           : (data.speakers || []).map((s, i) => ({ name: s.name || 'Speaker ' + (i+1), percentage: Math.round(100 / ((data.speakers || []).length || 1)), words: 200 }));
+
+        const startTimeBadge = topicProgression[0]?.time_range ? topicProgression[0].time_range.split('–')[0].split('-')[0].trim() : '12:00 PM';
+        const endTimeBadge = topicProgression[topicProgression.length - 1]?.time_range ? topicProgression[topicProgression.length - 1].time_range.split('–').pop().split('-').pop().trim() : '12:45 PM';
 
         posterRoot.innerHTML = `
           <!-- ── 1. TOP STATS RIBBON ── -->
@@ -622,7 +672,7 @@
               <div class="dash-tile" style="flex: 0.75;">
                 <div class="tile-header">
                   <span class="tile-title">Conversation Snapshot</span>
-                  <span class="tile-badge">Overview</span>
+                  <span class="tile-badge">Chronological Flow</span>
                 </div>
                 <div class="tile-content-fit">
                   ${paragraphs.slice(0, 2).map(p => `<p style="font-size: 10.5px; line-height: 1.35; color: #334155;">${escapeHtml(p)}</p>`).join('')}
@@ -644,10 +694,22 @@
               </div>
             </div>
 
-            <!-- ── RIGHT: KEY SOUNDBITES & GUEST VOICES ── -->
+            <!-- ── RIGHT: TOPIC PROGRESSION STREAMGRAPH & SOUNDBITES ── -->
             <div class="dash-col">
-              <!-- Tile 3: Key Soundbites -->
-              <div class="dash-tile" style="flex: 1.05;">
+              <!-- Tile 3: Topic Chronological Progression Streamgraph -->
+              <div class="dash-tile" style="flex: 1.15;">
+                <div class="tile-header">
+                  <span class="tile-title">Topic Progression River</span>
+                  <span class="tile-badge">Timeline Flow</span>
+                </div>
+                <div class="streamgraph-wrap">
+                  <canvas id="streamgraphCanvas"></canvas>
+                  <div class="streamgraph-badge">${startTimeBadge} &rarr; ${endTimeBadge}</div>
+                </div>
+              </div>
+
+              <!-- Tile 4: Key Soundbites -->
+              <div class="dash-tile" style="flex: 0.85;">
                 <div class="tile-header">
                   <span class="tile-title">Key Soundbites</span>
                   <span class="tile-badge">${voiceSpotlights.length} Quotes</span>
@@ -660,25 +722,6 @@
                         <span>— ${escapeHtml(q.speaker || 'Guest')}</span>
                         <span style="color: var(--muted);">${escapeHtml(q.company || '')}</span>
                       </span>
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-
-              <!-- Tile 4: Guest Voices -->
-              <div class="dash-tile" style="flex: 0.95;">
-                <div class="tile-header">
-                  <span class="tile-title">Guest Voices</span>
-                  <span class="tile-badge">${(data.speakers || []).length} Minds</span>
-                </div>
-                <div class="tile-content-fit">
-                  ${(data.speakers || []).slice(0, 3).map(spk => `
-                    <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; display: flex; flex-direction: column; gap: 2px;">
-                      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; font-weight: 700; color: var(--text);">
-                        <span>${escapeHtml(spk.name || 'Guest')} <span style="font-size: 9.5px; color: var(--muted); font-weight: normal;">${escapeHtml(spk.company || '')}</span></span>
-                        <span style="font-size: 9.5px; font-weight: 700; color: var(--emerald); background: #ecfdf5; border: 1px solid #a7f3d0; padding: 0 4px; border-radius: 2px;">${(parseFloat(spk.score) || 9.0).toFixed(1)}</span>
-                      </div>
-                      <span style="font-size: 10px; color: #475569; line-height: 1.3;">${escapeHtml((spk.contribution_summary || spk.in_depth_summary || '').slice(0, 85))}...</span>
                     </div>
                   `).join('')}
                 </div>
@@ -718,8 +761,11 @@
           </div>
         `;
 
-        // Render Real 2D Word Cloud with Horizontal & Vertical non-overlapping placement
+        // Render Canvas Word Cloud
         initRealWordCloud(wordCloud);
+
+        // Render Canvas Topic Progression Streamgraph River
+        initStreamgraph(topicProgression, stats.total_turns || 700);
       }
 
       // ── ROBUST 2D COLLISION-FREE WORD CLOUD ENGINE ──
@@ -737,14 +783,13 @@
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
 
-        // Sort words by weight descending
         const sortedWords = [...words].sort((a, b) => (b.weight || 50) - (a.weight || 50));
         const maxW = sortedWords[0]?.weight || 100;
         const minW = sortedWords[sortedWords.length - 1]?.weight || 30;
 
-        const placedBoxes = []; // { x1, y1, x2, y2, text, x, y, isVertical, fontSize, color, weight }
+        const placedBoxes = [];
 
-        function checkOverlap(box, padding = 4) {
+        function checkOverlap(box, padding = 6) {
           const b1 = {
             x1: box.x1 - padding,
             y1: box.y1 - padding,
@@ -752,7 +797,6 @@
             y2: box.y2 + padding
           };
 
-          // Canvas bounds check
           if (b1.x1 < 4 || b1.y1 < 4 || b1.x2 > canvas.width - 4 || b1.y2 > canvas.height - 4) {
             return true;
           }
@@ -760,7 +804,7 @@
           for (let i = 0; i < placedBoxes.length; i++) {
             const b2 = placedBoxes[i];
             if (!(b1.x2 < b2.x1 || b1.x1 > b2.x2 || b1.y2 < b2.y1 || b1.y1 > b2.y2)) {
-              return true; // Overlap detected
+              return true;
             }
           }
           return false;
@@ -770,32 +814,29 @@
           const rawWeight = item.weight || 60;
           const norm = (rawWeight - minW) / (maxW - minW || 1);
 
-          // Proportional Font Size: 11px to 26px
-          const fontSize = Math.round(11 + norm * 15);
+          const fontSize = Math.round(10 + norm * 13); // 10px to 23px
           const isBold = norm > 0.4 ? 'bold ' : '600 ';
           ctx.font = `${isBold}${fontSize}px 'Plus Jakarta Sans', sans-serif`;
 
           const text = item.text || 'Concept';
           const metrics = ctx.measureText(text);
-          const textW = metrics.width;
-          const textH = fontSize;
+          const textW = Math.ceil(metrics.width);
+          const textH = Math.ceil(fontSize * 1.15);
 
-          // Orientation: Top 1 is horizontal. Others alternate vertical (~30% of words)
-          const isVertical = (idx % 3 === 2 && textW < canvas.height * 0.45 && idx > 0);
+          const isVertical = (idx % 4 === 3 && textW < canvas.height * 0.42 && idx > 0);
 
           const boxW = isVertical ? textH : textW;
           const boxH = isVertical ? textW : textH;
 
-          // Archimedean Spiral Search for placement
           let placed = false;
-          let angle = idx * 1.5;
-          const angleStep = 0.25;
-          const radiusStep = 1.2;
+          let angle = idx * 1.7;
+          const angleStep = 0.18;
+          const radiusStep = 0.8;
 
-          for (let step = 0; step < 300; step++) {
-            const r = step * radiusStep * (step < 40 ? 0.8 : 1.2);
-            const x = centerX + Math.cos(angle) * r - boxW / 2;
-            const y = centerY + Math.sin(angle) * r * 0.7 - boxH / 2;
+          for (let step = 0; step < 450; step++) {
+            const r = step * radiusStep * (step < 60 ? 0.75 : 1.05);
+            const x = Math.round(centerX + Math.cos(angle) * r - boxW / 2);
+            const y = Math.round(centerY + Math.sin(angle) * r * 0.7 - boxH / 2);
 
             const candidate = {
               x1: x,
@@ -810,10 +851,10 @@
               isVertical: isVertical,
               fontSize: fontSize,
               weight: rawWeight,
-              color: idx === 0 ? '#1d4ed8' : (idx < 4 ? '#0f172a' : (idx < 8 ? '#334155' : '#64748b'))
+              color: idx === 0 ? '#1d4ed8' : (idx < 5 ? '#0f172a' : (idx < 10 ? '#334155' : '#64748b'))
             };
 
-            if (!checkOverlap(candidate)) {
+            if (!checkOverlap(candidate, 5)) {
               placedBoxes.push(candidate);
               placed = true;
               break;
@@ -823,7 +864,6 @@
           }
         });
 
-        // Draw all non-overlapping placed words
         let hoveredIndex = -1;
 
         function drawCloud() {
@@ -835,16 +875,16 @@
 
             const isBold = box.weight > 65 ? '800 ' : (box.weight > 50 ? '700 ' : '600 ');
             ctx.font = `${isBold}${box.fontSize}px 'Plus Jakarta Sans', sans-serif`;
+            ctx.textBaseline = 'top';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = isHover ? '#2563eb' : box.color;
 
             if (box.isVertical) {
-              // Rotate 90 degrees counter-clockwise
               ctx.translate(box.x + box.boxW, box.y);
               ctx.rotate(Math.PI / 2);
-              ctx.fillStyle = isHover ? '#2563eb' : box.color;
               ctx.fillText(box.text, 0, 0);
             } else {
-              ctx.fillStyle = isHover ? '#2563eb' : box.color;
-              ctx.fillText(box.text, box.x, box.y + box.boxH - 2);
+              ctx.fillText(box.text, box.x, box.y);
             }
 
             ctx.restore();
@@ -853,7 +893,6 @@
 
         drawCloud();
 
-        // Mouse hover interaction
         canvas.addEventListener('mousemove', (e) => {
           const r = canvas.getBoundingClientRect();
           const mx = e.clientX - r.left;
@@ -869,6 +908,96 @@
         });
       }
 
+      // ── TOPIC PROGRESSION STREAMGRAPH / RIVER VISUAL ENGINE ──
+      function initStreamgraph(phases, totalTurns) {
+        const canvas = document.getElementById('streamgraphCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const padding = { top: 22, bottom: 26, left: 16, right: 16 };
+        const w = canvas.width - padding.left - padding.right;
+        const h = canvas.height - padding.top - padding.bottom;
+
+        const count = phases.length || 3;
+        const segmentW = w / count;
+
+        // Draw Flow Waves
+        phases.forEach((ph, idx) => {
+          const xStart = padding.left + idx * segmentW;
+          const xMid = xStart + segmentW / 2;
+          const xEnd = xStart + segmentW;
+
+          const baseColor = PALETTE[idx % PALETTE.length];
+
+          // Draw Stream Gradient Area
+          ctx.beginPath();
+          ctx.moveTo(xStart, padding.top + h * 0.7);
+
+          ctx.bezierCurveTo(
+            xStart + segmentW * 0.3, padding.top + h * (0.2 + (idx % 2) * 0.25),
+            xStart + segmentW * 0.7, padding.top + h * (0.2 + (idx % 2) * 0.25),
+            xEnd, padding.top + h * 0.7
+          );
+
+          ctx.lineTo(xEnd, padding.top + h * 0.85);
+          ctx.lineTo(xStart, padding.top + h * 0.85);
+          ctx.closePath();
+
+          const grad = ctx.createLinearGradient(xStart, 0, xEnd, 0);
+          grad.addColorStop(0, idx === 0 ? 'rgba(37, 99, 235, 0.25)' : (idx === 1 ? 'rgba(71, 85, 105, 0.25)' : 'rgba(5, 150, 105, 0.25)'));
+          grad.addColorStop(1, idx === 0 ? 'rgba(37, 99, 235, 0.12)' : (idx === 1 ? 'rgba(71, 85, 105, 0.12)' : 'rgba(5, 150, 105, 0.12)'));
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // Stroke Wave Line
+          ctx.beginPath();
+          ctx.moveTo(xStart, padding.top + h * 0.7);
+          ctx.bezierCurveTo(
+            xStart + segmentW * 0.3, padding.top + h * (0.2 + (idx % 2) * 0.25),
+            xStart + segmentW * 0.7, padding.top + h * (0.2 + (idx % 2) * 0.25),
+            xEnd, padding.top + h * 0.7
+          );
+          ctx.strokeStyle = baseColor;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          // Node Marker
+          const nodeY = padding.top + h * (0.2 + (idx % 2) * 0.25);
+          ctx.beginPath();
+          ctx.arc(xMid, nodeY, 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = baseColor;
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Phase Label Above Node
+          ctx.font = 'bold 9.5px "Plus Jakarta Sans", sans-serif';
+          ctx.fillStyle = '#0f172a';
+          ctx.textAlign = 'center';
+          ctx.fillText((ph.topic || 'Phase ' + (idx + 1)).slice(0, 16), xMid, nodeY - 8);
+
+          // Time Range Badge Below
+          ctx.font = '600 8.5px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(ph.time_range || ph.turn_range || `P${idx+1}`, xMid, padding.top + h * 0.95);
+        });
+
+        // Horizontal baseline track
+        ctx.beginPath();
+        ctx.moveTo(padding.left, padding.top + h * 0.85);
+        ctx.lineTo(canvas.width - padding.right, padding.top + h * 0.85);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
       async function loadData(forceRefresh = false) {
         if (forceRefresh) {
           btnRegenerate.disabled = true;
@@ -877,7 +1006,7 @@
             <div class="empty-tile">
               <div class="spinner"></div>
               <strong style="font-size: 13px;">Synthesizing Intelligence Poster...</strong>
-              <span style="font-size: 11px; color: var(--muted);">Extracting deep insights, topic cloud, and speaker participation</span>
+              <span style="font-size: 11px; color: var(--muted);">Rendering topic progression streamgraph, word cloud, and deep insights</span>
             </div>
           `;
         }
