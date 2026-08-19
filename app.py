@@ -7,6 +7,7 @@ Server-Sent Events (SSE) for instant admin synchronization, and Gemini AI analys
 """
 
 import base64
+import concurrent.futures
 import json
 import logging
 import os
@@ -49,7 +50,8 @@ if os.path.exists(env_path):
         pass
 
 # Gemini API key for AI analysis & Word Cloud
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "AIzaSyDj3koF1cM1H-UczS-Gs7-BbDpd4_83D8k"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("app")
@@ -159,11 +161,7 @@ def analysis_page():
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# GATHERING OF LEADING MINDS: KNOWLEDGE & PERSPECTIVE SYNTHESIS ENGINE
-# ══════════════════════════════════════════════════════════════════════════
-
-# ══════════════════════════════════════════════════════════════════════════
-# GATHERING OF LEADING MINDS: KNOWLEDGE & PERSPECTIVE SYNTHESIS ENGINE
+# GATHERING OF LEADING MINDS: 4 SPECIALIZED GEMINI 3.7 THINKING PROMPTS
 # ══════════════════════════════════════════════════════════════════════════
 
 def _load_all_turns():
@@ -187,10 +185,9 @@ def _format_time_str(ts_str):
     if not ts_str:
         return ""
     try:
-        # Expected formats: 'YYYY-MM-DD HH:MM:SS' or ISO
         parts = ts_str.strip().split()
         if len(parts) >= 2:
-            time_part = parts[1][:5] # 'HH:MM'
+            time_part = parts[1][:5]
             h, m = map(int, time_part.split(':'))
             suffix = "AM" if h < 12 else "PM"
             h12 = h % 12 or 12
@@ -200,81 +197,136 @@ def _format_time_str(ts_str):
         return ts_str[:5] if ts_str else ""
 
 
-def _build_large_room_discourse_prompt(all_turns, registered_profiles):
-    """Constructs a high-precision, multi-section discourse intelligence prompt for Gemini."""
-    transcript_lines = []
-    speaker_stats = {}
+def call_gemini_37_thinking(prompt, timeout=500):
+    """Executes prompt exclusively on gemini-3.7-flash with thinking mode enabled (4096 thinking budget) and up to 500s timeout."""
+    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or GEMINI_API_KEY
+    if not key:
+        log.warning("No GEMINI_API_KEY configured.")
+        return None
 
-    start_time_str = _format_time_str(all_turns[0].get("created_at")) if all_turns else "12:00 PM"
-    end_time_str = _format_time_str(all_turns[-1].get("created_at")) if all_turns else "12:45 PM"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent"
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "response_mime_type": "application/json",
+            "thinkingConfig": {"thinkingBudget": 4096}
+        }
+    }
 
-    for idx, t in enumerate(all_turns, 1):
-        spk = t.get("speaker", "Speaker A").strip()
-        prof = registered_profiles.get(spk.lower(), {})
-        display_name = prof.get("name", spk)
-        company = prof.get("company_name", "")
-        company_tag = f" ({company})" if company else ""
-        time_tag = f" [{_format_time_str(t.get('created_at'))}]" if t.get('created_at') else ""
-        text = t.get("text", "").strip()
-        if text:
-            transcript_lines.append(f"[Turn {idx}{time_tag}] [{display_name}{company_tag}]: {text}")
-            if display_name not in speaker_stats:
-                speaker_stats[display_name] = {"company": company, "words": 0, "turns": 0}
-            speaker_stats[display_name]["words"] += len(text.split())
-            speaker_stats[display_name]["turns"] += 1
+    try:
+        resp = requests.post(url, params={"key": key}, json=body, timeout=timeout)
+        if resp.status_code == 200:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                for part in parts:
+                    if "text" in part and not part.get("thought", False):
+                        return part["text"]
+                if parts and "text" in parts[0]:
+                    return parts[0]["text"]
+        else:
+            log.warning("gemini-3.7-flash thinking returned status %d: %s", resp.status_code, resp.text[:140])
+    except Exception as e:
+        log.warning("gemini-3.7-flash thinking failed: %s", e)
 
-    full_dialogue_stream = "\n".join(transcript_lines)
-    total_words = sum(s["words"] for s in speaker_stats.values())
-    total_speakers = len(speaker_stats)
+    return None
 
-    prompt = (
-        "You are an elite industry intelligence analyst and executive knowledge synthesizer analyzing the complete transcript of an "
-        f"executive unconference / high-level gathering of {total_speakers} top minds in business, technology, operations, and architecture.\n\n"
-        "CORE SYNTHESIS DIRECTIVES:\n"
-        "1. CONVERSATION SNAPSHOT (`executive_synthesis`):\n"
-        "   - MUST FOLLOW EXACT CHRONOLOGICAL ORDER: Capture how the gathering started, what core problem/topic was addressed first, how the dialogue evolved into subsequent subjects, and where the room concluded.\n"
-        "   - OBJECTIVE NARRATIVE STYLE: Do NOT say 'Speaker A said this, then Speaker B argued that'. Write as a unified knowledge trajectory (e.g. 'The session began with an evaluation of [Topic 1], assessing [core challenge]. The dialogue transitioned into [Topic 2], weighing [critical trade-offs], and concluded with [strategic alignment on Topic 3]').\n"
-        "   - STRICT WORD BUDGET: Exactly 2 compact paragraphs, 75 to 95 words TOTAL. Zero filler, maximum information density so it fits a single-screen poster without scrolling.\n\n"
-        "2. TOPIC CHRONOLOGICAL PROGRESSION (`topic_progression`):\n"
-        "   - Map the entire gathering into 3 to 4 sequential chronological phases from start to end.\n"
-        f"   - USE REAL TIME RANGES: Use clock times (e.g. '{start_time_str} – 12:20 PM', '12:20 PM – 12:35 PM', '12:35 PM – {end_time_str}') for `time_range` instead of turn counts.\n"
-        "   - For each phase, specify: phase name, the time_range, the main topic explored, and a crisp 1-sentence takeaway.\n\n"
-        "3. KEY SOUNDBITES (`voice_spotlights`):\n"
-        "   - Extract EXACTLY 3 MEMORABLE, WOW-FACTOR SOUNDBITES.\n"
-        "   - These must be profound, insightful, high-gravitas statements that anyone who missed the gathering would regret not hearing (e.g. 'AI will replace 40 percent of our operational workforce within 18 months, forcing a total rewrite of our org chart').\n"
-        "   - Include the exact speaker name and their domain/company.\n\n"
-        "4. DEEP INDUSTRY INSIGHTS (`deep_insights`):\n"
-        "   - Extract EXACTLY 4 STRUCTURAL INDUSTRY INSIGHTS.\n"
-        "   - Must reveal deep-level structural market, technical, or architectural shifts uncovered by the gathering (not generic surface-level observations).\n"
-        "   - Format each with a sharp Title + a 2-sentence deep analytical finding.\n\n"
-        "5. TOPIC WORD CLOUD (`word_cloud`):\n"
-        "   - 18 to 24 specific industry terms, architectural patterns, and debated concepts with exact percentage weights (from 45% to 95%).\n\n"
-        f"GATHERING METRICS: Turns: {len(all_turns)} | Words: {total_words} | Speakers: {total_speakers} | Time Window: {start_time_str} to {end_time_str}\n\n"
-        "COMPLETE DIALOGUE STREAM:\n"
-        "==================== BEGIN DIALOGUE ====================\n"
-        f"{full_dialogue_stream}\n"
-        "===================== END DIALOGUE =====================\n\n"
-        "Return ONLY a valid JSON object matching this schema:\n"
+
+def call_gemini(prompt, response_json=False, timeout=500):
+    """Legacy wrapper directing calls to gemini-3.7-flash with thinking mode."""
+    return call_gemini_37_thinking(prompt, timeout=timeout)
+
+
+def _clean_json_str(raw):
+    if not raw:
+        return None
+    cleaned = raw.strip()
+    if cleaned.startswith("```json"): cleaned = cleaned[7:]
+    if cleaned.startswith("```"): cleaned = cleaned[3:]
+    if cleaned.endswith("```"): cleaned = cleaned[:-3]
+    try:
+        return json.loads(cleaned.strip())
+    except Exception:
+        return None
+
+
+# ── 1. PROMPT 1: CHRONOLOGICAL CONVERSATION SNAPSHOT & TITLE ──
+def _prompt_snapshot(dialogue_stream, total_speakers, total_words, total_turns, start_time_str, end_time_str):
+    return (
+        "You are an elite executive intelligence synthesizer analyzing the complete transcript of an executive unconference.\n"
+        f"METRICS: {total_speakers} Speakers | {total_turns} Dialogue Turns | {total_words} Words | Time: {start_time_str} to {end_time_str}\n\n"
+        "TASK: Produce the CONVERSATION SNAPSHOT (`executive_synthesis`) and a precise Title (`meeting_title`).\n\n"
+        "STRICT REQUIREMENTS:\n"
+        "1. STRICT CHRONOLOGICAL SEQUENCE: Clearly trace how the gathering initiated, what core challenge was tackled first, how the discussion evolved through the middle phases, and where the room concluded.\n"
+        "2. UNIFIED OBJECTIVE STYLE: Do NOT say 'Speaker A said this, then Speaker B argued that'. Write as a unified knowledge narrative (e.g. 'The session began with an evaluation of [Topic 1]... The dialogue transitioned into [Topic 2]... The room concluded with strategic alignment on [Topic 3]').\n"
+        "3. WORD BUDGET: Exactly 2 compact paragraphs, 75 to 95 words TOTAL. Zero filler, maximum information density.\n\n"
+        f"COMPLETE DIALOGUE STREAM:\n{dialogue_stream}\n\n"
+        "Return ONLY a valid JSON object matching:\n"
         "{\n"
-        '  "meeting_title": "Concise Thematic Title (e.g. Local Storage & Zero-Leakage Architecture Synthesis)",\n'
-        '  "room_stats": {\n'
-        f'    "total_speakers": {total_speakers},\n'
-        f'    "total_turns": {len(all_turns)},\n'
-        f'    "total_words": {total_words},\n'
-        '    "topics_count": 4\n'
-        "  },\n"
-        '  "executive_synthesis": "Concise chronological narrative (75-95 words, 2 paragraphs).",\n'
+        '  "meeting_title": "Concise Thematic Title (e.g. Local Storage Architecture & UI Integration)",\n'
+        '  "executive_synthesis": "Paragraph 1 (how it started and evolved).\\n\\nParagraph 2 (critical trade-offs and conclusion)."\n'
+        "}"
+    )
+
+
+# ── 2. PROMPT 2: 4-PHASE TOPIC PROGRESSION (25% CHRONOLOGICAL QUARTERS) ──
+def _prompt_progression(dialogue_stream, total_turns, r1, r2, r3, r4):
+    return (
+        "You are an elite timeline analyst extracting the exact chronological topic trajectory of a high-level technical unconference.\n"
+        f"METRICS: {total_turns} Dialogue Turns.\n\n"
+        "TASK: Extract the TOPIC CHRONOLOGICAL PROGRESSION across 4 exact sequential 25% quarters based on turn numbers:\n"
+        f"1. Quarter 1 (0% - 25% | {r1}): Identify 3 to 4 specific topics/themes discussed in these exact opening turns.\n"
+        f"2. Quarter 2 (25% - 50% | {r2}): Identify 3 to 4 specific topics/themes discussed in these middle turns.\n"
+        f"3. Quarter 3 (50% - 75% | {r3}): Identify 3 to 4 specific topics/themes discussed in these synthesis turns.\n"
+        f"4. Quarter 4 (75% - 100% | {r4}): Identify 3 to 4 specific topics/themes discussed in these closing turns.\n\n"
+        f"COMPLETE DIALOGUE STREAM:\n{dialogue_stream}\n\n"
+        "Return ONLY a valid JSON object matching:\n"
+        "{\n"
         '  "topic_progression": [\n'
-        f'    {{"phase": "Opening Catalyst", "time_range": "{start_time_str} - 12:20 PM", "topic": "Local Storage & Persistence", "summary": "Evaluated offline data ownership and eliminating cloud round-trips."}},\n'
-        '    {"phase": "Core Debate", "time_range": "12:20 PM - 12:35 PM", "topic": "Single-Viewport Information Density", "summary": "Weighed visual layout density and scroll-free executive dashboards."},\n'
-        f'    {{"phase": "Strategic Alignment", "time_range": "12:35 PM - {end_time_str}", "topic": "Incremental Caching & Deployment", "summary": "Consensus on differential state updates and secure deployment."}}\n'
-        '  ],\n'
+        f'    {{"phase": "Phase 1: Initiation", "phase_label": "0% – 25%", "turn_range": "{r1}", "topics": ["Topic A", "Topic B", "Topic C"], "summary": "1-sentence phase overview."}},\n'
+        f'    {{"phase": "Phase 2: Core Debate", "phase_label": "25% – 50%", "turn_range": "{r2}", "topics": ["Topic A", "Topic B", "Topic C"], "summary": "1-sentence phase overview."}},\n'
+        f'    {{"phase": "Phase 3: Deep Synthesis", "phase_label": "50% – 75%", "turn_range": "{r3}", "topics": ["Topic A", "Topic B", "Topic C"], "summary": "1-sentence phase overview."}},\n'
+        f'    {{"phase": "Phase 4: Consensus", "phase_label": "75% – 100%", "turn_range": "{r4}", "topics": ["Topic A", "Topic B", "Topic C"], "summary": "1-sentence phase overview."}}\n'
+        '  ]\n'
+        "}"
+    )
+
+
+# ── 3. PROMPT 3: 4 DEEP STRUCTURAL INDUSTRY INSIGHTS ──
+def _prompt_insights(dialogue_stream, total_speakers, total_turns):
+    return (
+        "You are a principal industry analyst and technology strategist analyzing an executive unconference.\n"
+        f"METRICS: {total_speakers} Contributors | {total_turns} Exchanges\n\n"
+        "TASK: Extract EXACTLY 4 DEEP STRUCTURAL INDUSTRY INSIGHTS (`deep_insights`).\n\n"
+        "STRICT REQUIREMENTS:\n"
+        "1. Must be deep, structural market, architectural, or technical revelations uncovered by the discussion (NOT surface-level or generic summaries).\n"
+        "2. Format each insight with a decisive Title and exactly 2 sentences of rigorous analytical insight.\n\n"
+        f"COMPLETE DIALOGUE STREAM:\n{dialogue_stream}\n\n"
+        "Return ONLY a valid JSON object matching:\n"
+        "{\n"
         '  "deep_insights": [\n'
-        '    {"title": "Structural Insight 1", "insight": "2-sentence deep structural market or technical revelation."},\n'
-        '    {"title": "Structural Insight 2", "insight": "2-sentence deep structural market or technical revelation."},\n'
-        '    {"title": "Structural Insight 3", "insight": "2-sentence deep structural market or technical revelation."},\n'
-        '    {"title": "Structural Insight 4", "insight": "2-sentence deep structural market or technical revelation."}\n'
-        "  ],\n"
+        '    {"title": "Structural Revelation 1", "insight": "2-sentence deep analytical finding."},\n'
+        '    {"title": "Structural Revelation 2", "insight": "2-sentence deep analytical finding."},\n'
+        '    {"title": "Structural Revelation 3", "insight": "2-sentence deep analytical finding."},\n'
+        '    {"title": "Structural Revelation 4", "insight": "2-sentence deep analytical finding."}\n'
+        '  ]\n'
+        "}"
+    )
+
+
+# ── 4. PROMPT 4: TOPIC WORD CLOUD & 3 KEY WOW SOUNDBITES ──
+def _prompt_wordcloud_and_soundbites(dialogue_stream, registered_profiles):
+    return (
+        "You are a master quotation curator and vocabulary analyst extracting high-impact perspectives from an unconference.\n\n"
+        "TASK: Extract the TOPIC WORD CLOUD (`word_cloud`) and KEY SOUNDBITES (`voice_spotlights`).\n\n"
+        "STRICT REQUIREMENTS:\n"
+        "1. WORD CLOUD: Extract 18 to 24 specific architectural concepts, industry terms, and technical patterns with percentage weights from 45% to 95%.\n"
+        "2. KEY SOUNDBITES: Extract EXACTLY 3 profound, high-gravitas 'wow-factor' quotes that summarize decisive insights from the meeting.\n"
+        "3. For each quote, include the exact speaker name and their domain/company.\n\n"
+        f"COMPLETE DIALOGUE STREAM:\n{dialogue_stream}\n\n"
+        "Return ONLY a valid JSON object matching:\n"
+        "{\n"
         '  "word_cloud": [\n'
         '    {"text": "SQLite Persistence", "weight": 95},\n'
         '    {"text": "Local Data Storage", "weight": 92},\n'
@@ -292,22 +344,21 @@ def _build_large_room_discourse_prompt(all_turns, registered_profiles):
         '    {"text": "Data Sovereignty", "weight": 55},\n'
         '    {"text": "Contextual Timeline", "weight": 52},\n'
         '    {"text": "State Delta", "weight": 48}\n'
-        "  ],\n"
+        '  ],\n'
         '  "voice_spotlights": [\n'
-        '    {"speaker": "Full Name", "company": "Company / Domain", "quote": "Profound, high-gravitas quote", "context": "Strategic context."},\n'
-        '    {"speaker": "Full Name", "company": "Company / Domain", "quote": "Profound, high-gravitas quote", "context": "Strategic context."},\n'
-        '    {"speaker": "Full Name", "company": "Company / Domain", "quote": "Profound, high-gravitas quote", "context": "Strategic context."}\n'
-        "  ]\n"
+        '    {"speaker": "Speaker Name", "company": "Company / Domain", "quote": "Profound high-gravitas quote", "context": "Strategic context."},\n'
+        '    {"speaker": "Speaker Name", "company": "Company / Domain", "quote": "Profound high-gravitas quote", "context": "Strategic context."},\n'
+        '    {"speaker": "Speaker Name", "company": "Company / Domain", "quote": "Profound high-gravitas quote", "context": "Strategic context."}\n'
+        '  ]\n'
         "}"
     )
-    return prompt
 
 
 @app.route("/api/deep-analysis", methods=["GET", "POST"])
 @app.route("/api/room-intelligence", methods=["GET", "POST"])
 def api_deep_analysis():
     """Retrieves (GET) or explicitly generates/regenerates (POST) the gathering knowledge & ideas poster.
-    GET is purely read-only from SQLite. POST triggers Gemini and saves into SQLite permanently."""
+    GET is purely read-only from SQLite. POST triggers 4 specialized Gemini 3.7 Thinking prompts in parallel."""
     all_turns = _load_all_turns()
 
     # Calculate exact speaker dialogue metrics (words, turns, % talk share)
@@ -342,7 +393,7 @@ def api_deep_analysis():
         return jsonify({
             "exists": False,
             "meeting_title": "No Synthesis Generated",
-            "executive_synthesis": "Click 'Generate Synthesis' to synthesize the full exchange of ideas across all contributors.",
+            "executive_synthesis": "Click 'Regenerate' to synthesize the full exchange of ideas across all contributors.",
             "deep_insights": [],
             "word_cloud": [],
             "speaker_shares": speaker_shares,
@@ -353,169 +404,90 @@ def api_deep_analysis():
     if not all_turns:
         return jsonify({
             "exists": False,
+            "error": "No speech transcripts recorded in the database yet.",
             "meeting_title": "No Data Recorded",
-            "executive_synthesis": "No speech transcripts recorded in the database yet.",
+            "executive_synthesis": "",
             "deep_insights": [],
             "word_cloud": [],
             "speaker_shares": [],
             "speakers": []
-        })
+        }), 400
 
-    # Retrieve registered profiles metadata
+    # Format transcript lines with timestamps and speaker tags
     registered_profiles = {p["name"].lower().strip(): p for p in speaker_id_engine.get_users_detailed()}
-    prompt = _build_large_room_discourse_prompt(all_turns, registered_profiles)
+    transcript_lines = []
+    start_time_str = _format_time_str(all_turns[0].get("created_at")) if all_turns else "12:00 PM"
+    end_time_str = _format_time_str(all_turns[-1].get("created_at")) if all_turns else "12:45 PM"
 
-    raw_json = call_gemini(prompt, response_json=True, timeout=150)
-    if raw_json:
-        try:
-            cleaned = raw_json.strip()
-            if cleaned.startswith("```json"): cleaned = cleaned[7:]
-            if cleaned.startswith("```"): cleaned = cleaned[3:]
-            if cleaned.endswith("```"): cleaned = cleaned[:-3]
-            parsed = json.loads(cleaned.strip())
-
-            if isinstance(parsed, dict) and "speakers" in parsed:
-                for spk_res in parsed.get("speakers", []):
-                    s_name = spk_res.get("name", "").strip().lower()
-                    meta = registered_profiles.get(s_name) or {}
-                    if meta:
-                        if not spk_res.get("company") and meta.get("company_name"):
-                            spk_res["company"] = meta["company_name"]
-                        spk_res["avatar_b64"] = meta.get("avatar_b64", "")
-                        spk_res["user_id"] = meta.get("user_id", "")
-                    if "contribution_summary" in spk_res and "in_depth_summary" not in spk_res:
-                        spk_res["in_depth_summary"] = spk_res["contribution_summary"]
-
-                parsed["speaker_shares"] = speaker_shares
-                db.set_meeting_meta("room_intelligence_poster", parsed)
-                db.set_meeting_meta("deep_analysis", parsed)
-                return jsonify({"exists": True, **parsed})
-        except Exception as exc:
-            log.warning("Failed to parse gathering synthesis: %s", exc)
-
-    # High-quality local offline fallback synthesis
-    speaker_turns = {}
-    for t in all_turns:
+    for idx, t in enumerate(all_turns, 1):
         spk = t.get("speaker", "Speaker A").strip()
-        speaker_turns.setdefault(spk, []).append(t.get("text", ""))
+        prof = registered_profiles.get(spk.lower(), {})
+        display_name = prof.get("name", spk)
+        company = prof.get("company_name", "")
+        company_tag = f" ({company})" if company else ""
+        time_tag = f" [{_format_time_str(t.get('created_at'))}]" if t.get('created_at') else ""
+        text = t.get("text", "").strip()
+        if text:
+            transcript_lines.append(f"[Turn {idx}{time_tag}] [{display_name}{company_tag}]: {text}")
 
-    fallback_data = {
-        "meeting_title": "System Architecture & Local Persistence Discussion",
+    full_dialogue_stream = "\n".join(transcript_lines)
+    total_speakers = len(speaker_metrics)
+
+    # Calculate 4 exact 25% chronological quarter turn slices
+    total_turns_count = len(all_turns)
+    q1_end = max(1, total_turns_count // 4)
+    q2_end = max(q1_end + 1, total_turns_count // 2)
+    q3_end = max(q2_end + 1, (3 * total_turns_count) // 4)
+    q4_end = total_turns_count
+
+    rng1 = f"Turns 1–{q1_end}"
+    rng2 = f"Turns {q1_end + 1}–{q2_end}"
+    rng3 = f"Turns {q2_end + 1}–{q3_end}"
+    rng4 = f"Turns {q3_end + 1}–{q4_end}"
+
+    # Build the 4 specialized prompt payloads
+    p1 = _prompt_snapshot(full_dialogue_stream, total_speakers, total_room_words, total_turns_count, start_time_str, end_time_str)
+    p2 = _prompt_progression(full_dialogue_stream, total_turns_count, rng1, rng2, rng3, rng4)
+    p3 = _prompt_insights(full_dialogue_stream, total_speakers, total_turns_count)
+    p4 = _prompt_wordcloud_and_soundbites(full_dialogue_stream, registered_profiles)
+
+    log.info("Executing 4 specialized Gemini 3.7 Thinking prompts in parallel (timeout=500s)...")
+
+    r1, r2, r3, r4 = {}, {}, {}, {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        f1 = executor.submit(call_gemini_37_thinking, p1, 500)
+        f2 = executor.submit(call_gemini_37_thinking, p2, 500)
+        f3 = executor.submit(call_gemini_37_thinking, p3, 500)
+        f4 = executor.submit(call_gemini_37_thinking, p4, 500)
+
+        r1 = _clean_json_str(f1.result()) or {}
+        r2 = _clean_json_str(f2.result()) or {}
+        r3 = _clean_json_str(f3.result()) or {}
+        r4 = _clean_json_str(f4.result()) or {}
+
+    # Merge all 4 specialized section outputs
+    final_output = {
+        "exists": True,
+        "meeting_title": r1.get("meeting_title", "Unconference Dialogue Synthesis"),
         "room_stats": {
-            "total_speakers": len(speaker_turns),
+            "total_speakers": total_speakers,
             "total_turns": len(all_turns),
             "total_words": total_room_words,
-            "topics_count": 4
+            "topics_count": len(r2.get("topic_progression", [])) or 4
         },
-        "executive_synthesis": (
-            f"An open gathering of {len(speaker_turns)} technical and product minds sharing perspectives across {len(all_turns)} dialogue exchanges.\n\n"
-            "The conversation explored offline data resilience, responsive user interfaces, and ensuring complete local data ownership with SQLite."
-        ),
-        "deep_insights": [
-            {
-                "title": "Local-First Architecture as a Strategic Advantage",
-                "insight": "Shifting intelligence caching directly to client-side SQLite eliminates cloud latency bottlenecks while ensuring 100% data privacy."
-            },
-            {
-                "title": "Information Density Over Redundant Visuals",
-                "insight": "High-caliber decision makers prefer compact, single-viewport layouts that present all vital data simultaneously without excessive scrolling."
-            },
-            {
-                "title": "Decoupled Analytical Processing",
-                "insight": "Persisting speech turns locally before triggering analytical models prevents expensive redundant compute on every page refresh."
-            },
-            {
-                "title": "Multi-Speaker Turn Distribution",
-                "insight": "Equalized dialogue turns between technical architects and domain leads produce superior consensus compared to top-down presentations."
-            }
-        ],
-        "word_cloud": [
-            {"text": "SQLite Persistence", "weight": 95},
-            {"text": "Zero Cloud Leaks", "weight": 90},
-            {"text": "UI Density", "weight": 85},
-            {"text": "Local Caching", "weight": 80},
-            {"text": "Speaker Identification", "weight": 75},
-            {"text": "Desktop Layout", "weight": 70},
-            {"text": "Offline Retention", "weight": 65},
-            {"text": "Dialogue Stream", "weight": 60}
-        ],
-        "macro_themes": [
-            {
-                "title": "System Architecture & Local Persistence",
-                "description": "Thoughts on local SQLite storage, offline data retention, and eliminating cloud latency.",
-                "keywords": ["SQLite", "Persistence", "Local Data"]
-            },
-            {
-                "title": "Interface Layout & Visual Analytics",
-                "description": "Designing high-density, clean visual layouts that present complex information on a single screen.",
-                "keywords": ["UI/UX", "Responsive Layout", "Visual Analytics"]
-            }
-        ],
-        "voice_spotlights": [
-            {
-                "speaker": list(speaker_turns.keys())[0] if speaker_turns else "Lead Architect",
-                "company": "System Engineering",
-                "quote": "If your data layer relies on constant cloud round-trips, you don't own your latency—your network provider does.",
-                "context": "Key conviction on local SQLite edge persistence."
-            },
-            {
-                "speaker": list(speaker_turns.keys())[1] if len(speaker_turns) > 1 else "Product Lead",
-                "company": "Interface Architecture",
-                "quote": "Decision makers don't want scroll fatigue; they want high-density visual intelligence visible in a single glance.",
-                "context": "Pivotal turning point for single-viewport UX."
-            },
-            {
-                "speaker": list(speaker_turns.keys())[0] if speaker_turns else "Tech Lead",
-                "company": "Infrastructure",
-                "quote": "Incremental delta computation isn't an optimization—at 700+ turns, it's the difference between real-time and total stall.",
-                "context": "Driving principle for speech processing pipeline."
-            }
-        ],
-        "topic_progression": [
-            {
-                "phase": "Opening Catalyst",
-                "turn_range": f"Turns 1–{max(1, len(all_turns)//3)}",
-                "topic": "Local SQLite Persistence & Storage",
-                "summary": "Assessed offline data ownership, zero cloud leaks, and eliminating round-trip latency."
-            },
-            {
-                "phase": "Architectural Debate",
-                "turn_range": f"Turns {len(all_turns)//3 + 1}–{2 * len(all_turns)//3}",
-                "topic": "High-Density Single-Viewport UI",
-                "summary": "Weighed visual layout density and scroll-free executive presentation."
-            },
-            {
-                "phase": "Strategic Alignment",
-                "turn_range": f"Turns {2 * len(all_turns)//3 + 1}–{len(all_turns)}",
-                "topic": "Incremental Delta Caching & Scaling",
-                "summary": "Consensus on differential state updates to prevent redundant full-dialogue compute."
-            }
-        ],
-        "speaker_shares": speaker_shares,
-        "speakers": []
+        "executive_synthesis": r1.get("executive_synthesis", ""),
+        "topic_progression": r2.get("topic_progression", []),
+        "deep_insights": r3.get("deep_insights", []),
+        "word_cloud": r4.get("word_cloud", []),
+        "voice_spotlights": r4.get("voice_spotlights", []),
+        "speaker_shares": speaker_shares
     }
 
-    for spk, texts in speaker_turns.items():
-        prof = registered_profiles.get(spk.lower(), {})
-        full_text = " ".join(texts)
-        paragraphs = [p.strip() for p in texts if len(p.strip()) > 8]
-        fallback_data["speakers"].append({
-            "name": prof.get("name", spk),
-            "company": prof.get("company_name", ""),
-            "avatar_b64": prof.get("avatar_b64", ""),
-            "user_id": prof.get("user_id", ""),
-            "contribution_summary": "\n\n".join(paragraphs[:2]) if paragraphs else full_text[:200],
-            "in_depth_summary": "\n\n".join(paragraphs[:2]) if paragraphs else full_text[:200],
-            "score": 8.5 if len(paragraphs) > 3 else 7.5,
-            "key_takeaways": [p for p in paragraphs[:2]]
-        })
-
-    fallback_data["overall_topics"] = [t["title"] for t in fallback_data["macro_themes"]]
-    fallback_data["executive_summary"] = fallback_data["executive_synthesis"]
-
-    db.set_meeting_meta("room_intelligence_poster", fallback_data)
-    db.set_meeting_meta("deep_analysis", fallback_data)
-    return jsonify({"exists": True, **fallback_data})
+    # Save real synthesis directly into SQLite
+    db.set_meeting_meta("room_intelligence_poster", final_output)
+    db.set_meeting_meta("deep_analysis", final_output)
+    log.info("Successfully synthesized and cached meeting intelligence via Gemini 3.7 Thinking.")
+    return jsonify(final_output)
 
 
 @app.route("/api/stream-events")
@@ -559,74 +531,6 @@ def api_streaming_token():
         traceback.print_exc()
         return jsonify({"error": f"{type(exc).__name__}: {exc}"}), 500
     return jsonify(token_data)
-
-
-GEMINI_MODEL = "gemini-3.6-flash"
-
-
-def call_gemini(prompt, response_json=False, timeout=150):
-    """Executes prompt on gemini-3.6-flash.
-    Primary: Thinking mode with up to 150s timeout for deep reasoning.
-    Fallback: Immediate non-thinking fast mode if thinking model times out or errors."""
-    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or GEMINI_API_KEY
-    if not key:
-        return None
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-
-    # 1. Primary Attempt: Thinking Model with 150s Timeout
-    gen_config_thinking = {}
-    if response_json:
-        gen_config_thinking["response_mime_type"] = "application/json"
-    gen_config_thinking["thinkingConfig"] = {"thinkingBudget": 2048}
-
-    body_thinking = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": gen_config_thinking
-    }
-    try:
-        resp = requests.post(url, params={"key": key}, json=body_thinking, timeout=timeout)
-        if resp.status_code == 200:
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                for part in parts:
-                    if "text" in part and not part.get("thought", False):
-                        return part["text"]
-                if parts and "text" in parts[0]:
-                    return parts[0]["text"]
-        else:
-            log.warning("Thinking Gemini returned %d: %s (attempting fast non-thinking fallback)", resp.status_code, resp.text[:120])
-    except Exception as e:
-        log.warning("Thinking Gemini request failed/timed out: %s (attempting fast non-thinking fallback)", e)
-
-    # 2. Resilient Fallback: Fast Non-Thinking Mode (under 2s)
-    gen_config_fast = {}
-    if response_json:
-        gen_config_fast["response_mime_type"] = "application/json"
-
-    body_fast = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": gen_config_fast
-    }
-    try:
-        resp = requests.post(url, params={"key": key}, json=body_fast, timeout=30)
-        if resp.status_code == 200:
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                for part in parts:
-                    if "text" in part and not part.get("thought", False):
-                        return part["text"]
-                if parts and "text" in parts[0]:
-                    return parts[0]["text"]
-        else:
-            log.warning("Fast Gemini returned %d: %s", resp.status_code, resp.text[:120])
-    except Exception as e:
-        log.warning("Fast Gemini request failed: %s", e)
-
-    return None
 
 
 MASTER_STOPWORDS = {

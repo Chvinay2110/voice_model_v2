@@ -312,35 +312,113 @@
       pointer-events: none;
     }
 
-    /* ── 3. REAL TOPIC PROGRESSION STREAMGRAPH (CANVAS CHART) ── */
-    .streamgraph-wrap {
+    /* ── 3. 4-PHASE TOPIC PROGRESSION TRANSFORMATION GRID ── */
+    .phase-quadrant-container {
       flex: 1;
-      background: #fafbfc;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 6px;
-      position: relative;
       overflow: hidden;
+    }
+
+    .phase-quadrant {
       display: flex;
-    }
-
-    #streamgraphCanvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    .streamgraph-badge {
-      position: absolute;
-      bottom: 6px;
-      right: 8px;
-      font-size: 9px;
-      font-weight: 600;
-      color: var(--muted);
+      flex-direction: column;
+      padding: 7px 8px;
+      gap: 4px;
       background: #ffffff;
-      padding: 1px 6px;
+      position: relative;
+    }
+
+    .phase-quadrant.has-divider {
+      border-right: 1.5px dashed #cbd5e1;
+    }
+
+    .phase-quadrant-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 3px;
+    }
+
+    .phase-quarter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 8.5px;
+      font-weight: 700;
+      padding: 1px 4px;
       border-radius: 3px;
-      border: 1px solid var(--border);
-      pointer-events: none;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .quarter-dot {
+      width: 4.5px;
+      height: 4.5px;
+      border-radius: 50%;
+    }
+
+    .phase-turn-range {
+      font-size: 8px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+    }
+
+    .phase-title {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .phase-topics-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5px;
+      flex: 1;
+    }
+
+    .phase-topic-pill {
+      display: flex;
+      align-items: flex-start;
+      gap: 3px;
+      font-size: 8.5px;
+      font-weight: 600;
+      color: #334155;
+      background: #f1f5f9;
+      padding: 2px 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+      line-height: 1.15;
+    }
+
+    .topic-bullet {
+      font-size: 7.5px;
+      flex-shrink: 0;
+      margin-top: 0.5px;
+    }
+
+    .topic-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .phase-summary {
+      font-size: 7.5px;
+      color: #64748b;
+      line-height: 1.15;
+      font-style: italic;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-top: auto;
     }
 
     /* ── 4. QUOTES & SNAPSHOT ── */
@@ -555,57 +633,10 @@
         const synthesis = safeStr(data.executive_synthesis || data.executive_summary, '');
         const paragraphs = synthesis.split(/\n\n+/).filter(Boolean);
 
-        const deepInsights = Array.isArray(data.deep_insights) && data.deep_insights.length > 0
-          ? data.deep_insights.slice(0, 4)
-          : [
-              { title: "Local-First Persistence Strategy", insight: "Persisting speech turns directly in SQLite eliminates cloud reliance while guaranteeing zero-latency analytical loading." },
-              { title: "Information Density & Executive UI", insight: "High-level practitioners prioritize compact, single-viewport interfaces that surface key metrics without deep scrolling." },
-              { title: "Incremental Analytical Delta Caching", insight: "Processing conversation updates incrementally prevents costly full-dialogue re-computation on every turn." },
-              { title: "Decentralized Speaker Contributions", insight: "Equalized voice distribution across engineering and product leaders produces superior architectural alignment." }
-            ];
-
-        const wordCloud = Array.isArray(data.word_cloud) && data.word_cloud.length > 0
-          ? data.word_cloud
-          : [
-              { text: "SQLite Persistence", weight: 95 },
-              { text: "Local Data Storage", weight: 92 },
-              { text: "UI Redesign", weight: 88 },
-              { text: "Zero Cloud Leaks", weight: 85 },
-              { text: "Incremental Caching", weight: 82 },
-              { text: "Transcript Stream", weight: 80 },
-              { text: "Speaker Identification", weight: 76 },
-              { text: "Desktop Layout", weight: 74 },
-              { text: "Offline Retention", weight: 70 },
-              { text: "Edge Processing", weight: 68 },
-              { text: "CSS Overflow Control", weight: 65 },
-              { text: "Zero Scroll UI", weight: 62 },
-              { text: "Audio Vectors", weight: 58 },
-              { text: "Data Sovereignty", weight: 55 },
-              { text: "Contextual Timeline", weight: 52 },
-              { text: "State Delta", weight: 48 },
-              { text: "Real-time Streaming", weight: 45 },
-              { text: "Local Caching", weight: 42 }
-            ];
-
-        const defaultQuotes = [
-          { speaker: "Lead Architect", company: "System Engineering", quote: "If your data layer relies on constant cloud round-trips, you don't own your latency—your network provider does." },
-          { speaker: "Product Lead", company: "Interface Architecture", quote: "Decision makers don't want scroll fatigue; they want high-density visual intelligence visible in a single glance." },
-          { speaker: "Tech Lead", company: "Infrastructure", quote: "Incremental delta computation isn't an optimization—at 700+ turns, it's the difference between real-time and total stall." }
-        ];
-
-        const voiceSpotlights = (Array.isArray(data.voice_spotlights) && data.voice_spotlights.length > 0)
-          ? data.voice_spotlights.slice(0, 3)
-          : defaultQuotes;
-
-        const defaultProgression = [
-          { phase: "Opening Catalyst", time_range: "12:00 PM – 12:18 PM", topic: "Local Storage & Persistence", summary: "Evaluated offline data ownership and eliminating cloud round-trip latency." },
-          { phase: "Architectural Debate", time_range: "12:18 PM – 12:35 PM", topic: "Single-Viewport UI Density", summary: "Weighed visual layout density and scroll-free presentation for decision makers." },
-          { phase: "Strategic Alignment", time_range: "12:35 PM – 12:45 PM", topic: "Incremental Delta Caching", summary: "Consensus on differential state updates to prevent redundant compute." }
-        ];
-
-        const topicProgression = (Array.isArray(data.topic_progression) && data.topic_progression.length > 0)
-          ? data.topic_progression.slice(0, 3)
-          : defaultProgression;
+        const deepInsights = Array.isArray(data.deep_insights) ? data.deep_insights.slice(0, 4) : [];
+        const wordCloud = Array.isArray(data.word_cloud) ? data.word_cloud : [];
+        const voiceSpotlights = Array.isArray(data.voice_spotlights) ? data.voice_spotlights.slice(0, 3) : [];
+        const topicProgression = Array.isArray(data.topic_progression) ? data.topic_progression.slice(0, 4) : [];
 
         const speakerShares = Array.isArray(data.speaker_shares) && data.speaker_shares.length > 0
           ? data.speaker_shares
@@ -694,17 +725,40 @@
               </div>
             </div>
 
-            <!-- ── RIGHT: TOPIC PROGRESSION STREAMGRAPH & SOUNDBITES ── -->
+            <!-- ── RIGHT: 4-PHASE TOPIC PROGRESSION & SOUNDBITES ── -->
             <div class="dash-col">
-              <!-- Tile 3: Topic Chronological Progression Streamgraph -->
-              <div class="dash-tile" style="flex: 1.15;">
+              <!-- Tile 3: 4-Phase Topic Progression (3 divider lines for 4 quarters) -->
+              <div class="dash-tile" style="flex: 1.25;">
                 <div class="tile-header">
-                  <span class="tile-title">Topic Progression River</span>
-                  <span class="tile-badge">Timeline Flow</span>
+                  <span class="tile-title">Topic Chronological Progression</span>
+                  <span class="tile-badge">4 Phase Transformations</span>
                 </div>
-                <div class="streamgraph-wrap">
-                  <canvas id="streamgraphCanvas"></canvas>
-                  <div class="streamgraph-badge">${startTimeBadge} &rarr; ${endTimeBadge}</div>
+                <div class="phase-quadrant-container">
+                  ${topicProgression.map((ph, idx) => {
+                    const color = PALETTE[idx % PALETTE.length];
+                    const topicsList = Array.isArray(ph.topics) ? ph.topics : (ph.topic ? [ph.topic] : []);
+                    return `
+                      <div class="phase-quadrant ${idx < 3 ? 'has-divider' : ''}">
+                        <div class="phase-quadrant-header">
+                          <div class="phase-quarter-tag" style="background: ${color}15; color: ${color}; border: 1px solid ${color}35;">
+                            <span class="quarter-dot" style="background: ${color};"></span>
+                            ${escapeHtml(ph.phase_label || (idx * 25) + '%–' + ((idx + 1) * 25) + '%')}
+                          </div>
+                          <span class="phase-turn-range">${escapeHtml(ph.turn_range || '')}</span>
+                        </div>
+                        <div class="phase-title" title="${escapeHtml(ph.phase || '')}">${escapeHtml(ph.phase || 'Phase ' + (idx + 1))}</div>
+                        <div class="phase-topics-list">
+                          ${topicsList.map(top => `
+                            <div class="phase-topic-pill" title="${escapeHtml(top)}">
+                              <span class="topic-bullet" style="color: ${color};">▸</span>
+                              <span class="topic-text">${escapeHtml(top)}</span>
+                            </div>
+                          `).join('')}
+                        </div>
+                        ${ph.summary ? `<div class="phase-summary">${escapeHtml(ph.summary)}</div>` : ''}
+                      </div>
+                    `;
+                  }).join('')}
                 </div>
               </div>
 
@@ -763,9 +817,6 @@
 
         // Render Canvas Word Cloud
         initRealWordCloud(wordCloud);
-
-        // Render Canvas Topic Progression Streamgraph River
-        initStreamgraph(topicProgression, stats.total_turns || 700);
       }
 
       // ── ROBUST 2D COLLISION-FREE WORD CLOUD ENGINE ──
@@ -906,96 +957,6 @@
             drawCloud();
           }
         });
-      }
-
-      // ── TOPIC PROGRESSION STREAMGRAPH / RIVER VISUAL ENGINE ──
-      function initStreamgraph(phases, totalTurns) {
-        const canvas = document.getElementById('streamgraphCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-
-        const rect = canvas.parentElement.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const padding = { top: 22, bottom: 26, left: 16, right: 16 };
-        const w = canvas.width - padding.left - padding.right;
-        const h = canvas.height - padding.top - padding.bottom;
-
-        const count = phases.length || 3;
-        const segmentW = w / count;
-
-        // Draw Flow Waves
-        phases.forEach((ph, idx) => {
-          const xStart = padding.left + idx * segmentW;
-          const xMid = xStart + segmentW / 2;
-          const xEnd = xStart + segmentW;
-
-          const baseColor = PALETTE[idx % PALETTE.length];
-
-          // Draw Stream Gradient Area
-          ctx.beginPath();
-          ctx.moveTo(xStart, padding.top + h * 0.7);
-
-          ctx.bezierCurveTo(
-            xStart + segmentW * 0.3, padding.top + h * (0.2 + (idx % 2) * 0.25),
-            xStart + segmentW * 0.7, padding.top + h * (0.2 + (idx % 2) * 0.25),
-            xEnd, padding.top + h * 0.7
-          );
-
-          ctx.lineTo(xEnd, padding.top + h * 0.85);
-          ctx.lineTo(xStart, padding.top + h * 0.85);
-          ctx.closePath();
-
-          const grad = ctx.createLinearGradient(xStart, 0, xEnd, 0);
-          grad.addColorStop(0, idx === 0 ? 'rgba(37, 99, 235, 0.25)' : (idx === 1 ? 'rgba(71, 85, 105, 0.25)' : 'rgba(5, 150, 105, 0.25)'));
-          grad.addColorStop(1, idx === 0 ? 'rgba(37, 99, 235, 0.12)' : (idx === 1 ? 'rgba(71, 85, 105, 0.12)' : 'rgba(5, 150, 105, 0.12)'));
-          ctx.fillStyle = grad;
-          ctx.fill();
-
-          // Stroke Wave Line
-          ctx.beginPath();
-          ctx.moveTo(xStart, padding.top + h * 0.7);
-          ctx.bezierCurveTo(
-            xStart + segmentW * 0.3, padding.top + h * (0.2 + (idx % 2) * 0.25),
-            xStart + segmentW * 0.7, padding.top + h * (0.2 + (idx % 2) * 0.25),
-            xEnd, padding.top + h * 0.7
-          );
-          ctx.strokeStyle = baseColor;
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
-
-          // Node Marker
-          const nodeY = padding.top + h * (0.2 + (idx % 2) * 0.25);
-          ctx.beginPath();
-          ctx.arc(xMid, nodeY, 4.5, 0, Math.PI * 2);
-          ctx.fillStyle = baseColor;
-          ctx.fill();
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-
-          // Phase Label Above Node
-          ctx.font = 'bold 9.5px "Plus Jakarta Sans", sans-serif';
-          ctx.fillStyle = '#0f172a';
-          ctx.textAlign = 'center';
-          ctx.fillText((ph.topic || 'Phase ' + (idx + 1)).slice(0, 16), xMid, nodeY - 8);
-
-          // Time Range Badge Below
-          ctx.font = '600 8.5px "JetBrains Mono", monospace';
-          ctx.fillStyle = '#64748b';
-          ctx.fillText(ph.time_range || ph.turn_range || `P${idx+1}`, xMid, padding.top + h * 0.95);
-        });
-
-        // Horizontal baseline track
-        ctx.beginPath();
-        ctx.moveTo(padding.left, padding.top + h * 0.85);
-        ctx.lineTo(canvas.width - padding.right, padding.top + h * 0.85);
-        ctx.strokeStyle = '#e2e8f0';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
       }
 
       async function loadData(forceRefresh = false) {
