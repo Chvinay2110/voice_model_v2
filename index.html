@@ -289,8 +289,8 @@
 
     /* ── LEFT: transcript ── */
     .transcript-col {
-      flex: 65;
-      min-width: 0;
+      flex: 1;
+      min-width: 320px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -311,11 +311,54 @@
       padding: 0 20px 12px;
     }
 
+    /* ── RESIZER GUTTER ── */
+    .resizer-gutter {
+      width: 7px;
+      cursor: col-resize;
+      background: var(--border);
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.15s ease;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    .resizer-gutter:hover,
+    .resizer-gutter.resizing {
+      background: var(--accent);
+    }
+    .resizer-handle {
+      width: 3px;
+      height: 28px;
+      border-radius: 3px;
+      background: #94a3b8;
+      transition: background 0.15s ease;
+    }
+    .resizer-gutter:hover .resizer-handle,
+    .resizer-gutter.resizing .resizer-handle {
+      background: #ffffff;
+    }
+
+    body.is-resizing-col {
+      cursor: col-resize !important;
+      user-select: none !important;
+    }
+    body.is-resizing-col * {
+      user-select: none !important;
+      pointer-events: none !important;
+    }
+    body.is-resizing-col #statsResizer {
+      pointer-events: auto !important;
+    }
+
     /* ── RIGHT: stats panel ── */
     .stats-col {
-      flex: 35;
-      min-width: 260px;
-      max-width: 420px;
+      width: 380px;
+      min-width: 220px;
+      max-width: 75vw;
+      flex-shrink: 0;
       background: var(--surface);
       border-left: 1px solid var(--border);
       display: flex;
@@ -717,17 +760,15 @@
       flex-direction: column;
       gap: 20px;
       overflow-y: auto;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE / Edge */
     }
 
     #speakerContainer::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    #speakerContainer::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 4px;
+      display: none; /* Chrome, Safari, Edge */
+      width: 0px;
+      height: 0px;
+      background: transparent;
     }
 
     /* Interim bar */
@@ -971,8 +1012,13 @@
         <div id="interimBar"></div>
       </div>
 
+      <!-- DRAGGABLE RESIZER GUTTER -->
+      <div class="resizer-gutter" id="statsResizer" title="Drag left/right to resize (double-click to reset)">
+        <div class="resizer-handle"></div>
+      </div>
+
       <!-- RIGHT: stats panel -->
-      <div class="stats-col">
+      <div class="stats-col" id="statsCol">
         <!-- Speaking time graph -->
         <div class="stats-section">
           <div class="stats-title">Speaking Time Distribution</div>
@@ -1022,6 +1068,66 @@
       const interimBar = document.getElementById('interimBar');
       const btnEnglish = document.getElementById('btnEnglish');
       const btnHindi = document.getElementById('btnHindi');
+
+      // ── Resizable Stats & Graph Panel ─────────────────────────────────────
+      (function initStatsResizer() {
+        const resizer = document.getElementById('statsResizer');
+        const statsCol = document.getElementById('statsCol') || document.querySelector('.stats-col');
+        if (!resizer || !statsCol) return;
+
+        const savedWidth = localStorage.getItem('deebug_stats_panel_width');
+        if (savedWidth) {
+          const w = parseInt(savedWidth, 10);
+          const maxAllowed = Math.round(window.innerWidth * 0.75);
+          if (w >= 220 && w <= maxAllowed) {
+            statsCol.style.width = w + 'px';
+          }
+        }
+
+        let isDragging = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        resizer.addEventListener('mousedown', (e) => {
+          isDragging = true;
+          startX = e.clientX;
+          startWidth = statsCol.getBoundingClientRect().width;
+          resizer.classList.add('resizing');
+          document.body.classList.add('is-resizing-col');
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          const dx = startX - e.clientX;
+          const maxW = Math.round(window.innerWidth * 0.75);
+          const newWidth = Math.max(220, Math.min(maxW, startWidth + dx));
+          statsCol.style.width = newWidth + 'px';
+          localStorage.setItem('deebug_stats_panel_width', newWidth);
+          if (chartInstance) {
+            chartInstance.resize();
+          }
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (isDragging) {
+            isDragging = false;
+            resizer.classList.remove('resizing');
+            document.body.classList.remove('is-resizing-col');
+            if (chartInstance) {
+              chartInstance.resize();
+            }
+          }
+        });
+
+        resizer.addEventListener('dblclick', () => {
+          statsCol.style.width = '380px';
+          localStorage.removeItem('deebug_stats_panel_width');
+          if (chartInstance) {
+            chartInstance.resize();
+          }
+        });
+      })();
 
       function updateTranscribeButtonUI(isTranscribing) {
         if (!btnToggleTranscribe) return;
