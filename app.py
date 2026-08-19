@@ -323,9 +323,16 @@ def _prompt_insights(dialogue_stream, total_speakers, total_turns):
 def _prompt_wordcloud_and_soundbites(dialogue_stream, registered_profiles):
     profile_hints = ""
     if registered_profiles:
-        profile_hints = "\nREGISTERED PARTICIPANT PROFILES (Match quotes to real participants):\n" + "\n".join(
-            [f"- {p.get('name')}: {p.get('company', '')} ({p.get('role', '')})" for p in registered_profiles if p.get('name')]
-        ) + "\n\n"
+        profile_list = registered_profiles.values() if isinstance(registered_profiles, dict) else registered_profiles
+        lines = []
+        for p in profile_list:
+            if isinstance(p, dict) and p.get("name"):
+                company = p.get("company_name") or p.get("company") or ""
+                role = p.get("role") or ""
+                extra = f" ({company} - {role})" if (company or role) else ""
+                lines.append(f"- {p.get('name')}{extra}")
+        if lines:
+            profile_hints = "\nREGISTERED PARTICIPANT PROFILES (Match quotes to real participants):\n" + "\n".join(lines) + "\n\n"
 
     return (
         "You are a master quotation curator and vocabulary analyst extracting high-impact perspectives from an unconference.\n\n"
