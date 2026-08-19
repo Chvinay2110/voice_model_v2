@@ -46,6 +46,36 @@
       flex-shrink: 0;
     }
 
+    .brand-logo {
+      display: inline-flex;
+      align-items: baseline;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .brand-logo .logo-dee {
+      color: #0f172a;
+    }
+
+    .brand-logo .logo-bug {
+      color: #2563eb;
+    }
+
+    .brand-logo .logo-tag {
+      color: #881337;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      font-size: 0.62em;
+      font-weight: 800;
+      margin-left: 2px;
+      vertical-align: top;
+      position: relative;
+      top: -0.32em;
+      letter-spacing: -0.04em;
+    }
+
     .header-title {
       font-size: 16px;
       font-weight: 700;
@@ -130,17 +160,275 @@
       overflow: hidden;
     }
 
-    /* ── LEFT: Turns Column ── */
-    .turns-col {
-      flex: 65;
+    /* ── MAIN BODY 3-Column Split Layout ── */
+    .main-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── LEFT: Frontend Live Conversation Stream ── */
+    .frontend-col {
+      flex: 36;
+      min-width: 280px;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #frontendSpeakerContainer {
+      flex: 1;
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* Speaker Box (Matching Frontend View) */
+    .speaker-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .speaker-box.speaker-box-active-glow {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2.5px rgba(99, 102, 241, 0.35), 0 4px 16px rgba(99, 102, 241, 0.1) !important;
+    }
+
+    .speaker-box-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #fafbfc;
+      flex-shrink: 0;
+    }
+
+    .spk-name {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .spk-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+
+    .speaker-box-body {
+      padding: 12px 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      max-height: 320px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .turn-line {
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+      padding: 3px 6px;
+      border-radius: 6px;
+      transition: background .12s, box-shadow .12s;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 6px;
+      position: relative;
+    }
+    .turn-line:hover {
+      background: rgba(99, 102, 241, 0.08);
+      color: var(--accent);
+    }
+    .turn-line-text {
+      flex: 1;
       min-width: 0;
+      word-break: break-word;
+    }
+    .btn-line-reassign {
+      opacity: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 5px;
+      border: 1px solid #c7d2fe;
+      background: #ffffff;
+      color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all .12s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+    .turn-line:hover .btn-line-reassign {
+      opacity: 1;
+    }
+    .btn-line-reassign:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      transform: scale(1.04);
+    }
+
+    /* Left Panel Floating Speaker Picker */
+    .left-panel-picker-menu {
+      position: fixed;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.2), 0 6px 12px -4px rgba(0, 0, 0, 0.08);
+      z-index: 10000;
+      width: 270px;
+      max-height: 350px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: comboboxFadeIn .12s ease-out;
+    }
+    .left-panel-picker-header {
+      padding: 9px 12px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .left-panel-picker-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .left-panel-picker-sub {
+      font-size: 10.5px;
+      color: var(--muted);
+    }
+    .left-panel-picker-search-wrap {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: #ffffff;
+    }
+    .left-panel-picker-search-icon {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .left-panel-picker-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 12.5px;
+      font-family: inherit;
+      color: var(--text);
+      background: transparent;
+    }
+    .left-panel-picker-list {
+      max-height: 220px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      padding: 4px 0;
+    }
+    .left-panel-picker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      transition: background .1s, color .1s;
+      user-select: none;
+    }
+    .left-panel-picker-item:hover,
+    .left-panel-picker-item.active {
+      background: #eef2ff;
+      color: var(--accent);
+    }
+    .left-panel-picker-item-avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #475569;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .left-panel-picker-item-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .left-panel-picker-item-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12.5px;
+    }
+    .left-panel-picker-item-new {
+      border-top: 1px dashed var(--border);
+      color: var(--accent);
+      font-weight: 600;
+      padding: 7px 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fafbfc;
+      cursor: pointer;
+      font-size: 12px;
+      user-select: none;
+    }
+    .left-panel-picker-item-new:hover,
+    .left-panel-picker-item-new.active {
+      background: #eef2ff;
+    }
+
+    /* ── MIDDLE: Turns Column ── */
+    .turns-col {
+      flex: 38;
+      min-width: 300px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
 
     .col-header {
-      padding: 14px 24px;
+      height: 52px;
+      min-height: 52px;
+      padding: 0 18px;
       font-size: 12px;
       font-weight: 700;
       color: var(--muted);
@@ -151,6 +439,8 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      box-sizing: border-box;
+      flex-shrink: 0;
     }
 
     .count-badge {
@@ -182,6 +472,9 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
     }
 
     .turn-header {
@@ -201,11 +494,16 @@
     }
 
     .turn-badge {
-      margin-left: auto;
       font-size: 11px;
       font-weight: 600;
       padding: 2px 8px;
       border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .turn-badge:empty {
+      display: none;
     }
     .turn-badge.tagged {
       background: #dcfce7;
@@ -227,22 +525,478 @@
       align-items: center;
       gap: 8px;
       padding-top: 4px;
+      position: relative;
     }
 
-    .turn-select {
+    .header-filters-wrap {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .speaker-filter-combobox {
+      max-width: 220px;
+      min-width: 170px;
+      font-size: 12.5px;
+    }
+    .speaker-filter-combobox .combobox-trigger {
+      background: #ffffff;
+      padding: 3px 8px;
+      height: 30px;
+      border-radius: 7px;
+      box-sizing: border-box;
+    }
+    .speaker-filter-combobox.filter-active .combobox-trigger {
+      border-color: var(--accent);
+      background: #eef2ff;
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+    }
+
+    .btn-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      box-sizing: border-box;
+      transition: all .12s;
+    }
+    .btn-filter:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: var(--text);
+    }
+    .btn-filter.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+    .btn-filter.active .count-badge {
+      background: rgba(255,255,255,0.25);
+      color: #ffffff;
+    }
+    .combobox-item-all {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+      border-bottom: 1px dashed var(--border);
+      transition: background .12s;
+    }
+    .combobox-item-all:hover, .combobox-item-all.active {
+      background: #eef2ff;
+    }
+    .combobox-item-turns-count {
+      font-size: 11px;
+      color: #64748b;
+      margin-left: auto;
+      background: #f1f5f9;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    /* ── Searchable Combobox Component ── */
+    .combobox-container {
+      position: relative;
+      flex: 1;
+      max-width: 290px;
+      min-width: 200px;
+      font-size: 13px;
+    }
+
+    .combobox-trigger {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       background: #f8fafc;
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 6px 10px;
+      border-radius: 7px;
+      padding: 5px 9px;
+      transition: all .15s ease;
+      cursor: text;
+      position: relative;
+    }
+    .combobox-container.open .combobox-trigger,
+    .combobox-trigger:focus-within {
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+
+    .combobox-avatar-mini {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e0e7ff;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+      user-select: none;
+      cursor: text;
+    }
+    .combobox-avatar-mini img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .combobox-input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text);
+      width: 100%;
+      min-width: 60px;
+      cursor: text;
+    }
+    .combobox-input::placeholder {
+      color: #94a3b8;
+    }
+
+    .combobox-clear-btn {
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: color .12s;
+    }
+    .combobox-clear-btn:hover {
+      color: var(--danger);
+      background: #fee2e2;
+    }
+
+    .combobox-arrow {
+      color: #94a3b8;
+      font-size: 10px;
+      pointer-events: none;
+      transition: transform .15s ease;
+      user-select: none;
+    }
+    .combobox-container.open .combobox-arrow {
+      transform: rotate(180deg);
+      color: var(--accent);
+    }
+
+    .combobox-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      min-width: 270px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.14), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+      z-index: 1000;
+      overflow: hidden;
+      display: none;
+      flex-direction: column;
+      animation: comboboxFadeIn .12s ease-out;
+    }
+    @keyframes comboboxFadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .combobox-container.open .combobox-dropdown {
+      display: flex;
+    }
+
+    .combobox-list {
+      max-height: 220px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      padding: 4px 0;
+    }
+
+    .combobox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      cursor: pointer;
       font-size: 13px;
       color: var(--text);
-      font-family: inherit;
-      outline: none;
-      flex: 1;
-      max-width: 260px;
-      cursor: pointer;
+      transition: background .1s, color .1s;
+      user-select: none;
     }
-    .turn-select:focus { border-color: var(--accent); }
+    .combobox-item:hover,
+    .combobox-item.active {
+      background: #f1f5f9;
+      color: var(--accent);
+    }
+    .combobox-item.selected {
+      background: #eef2ff;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .combobox-item-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #475569;
+      font-size: 10.5px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .combobox-item-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .combobox-item-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .combobox-item-name mark {
+      background: #fef08a;
+      color: #854d0e;
+      font-weight: 700;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
+    .combobox-item-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .combobox-item-badge.enrolled {
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 600;
+    }
+
+    .combobox-item-new {
+      border-top: 1px dashed var(--border);
+      color: var(--accent);
+      font-weight: 600;
+      padding: 8px 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #fafbfc;
+      cursor: pointer;
+      font-size: 12.5px;
+      user-select: none;
+    }
+    .combobox-item-new:hover,
+    .combobox-item-new.active {
+      background: #eef2ff;
+    }
+
+    /* ── Batch Selection Action Bar ── */
+    .batch-action-bar {
+      background: #eef2ff;
+      border-bottom: 1.5px solid #c7d2fe;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      animation: batchSlideDown .15s ease-out;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    @keyframes batchSlideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .batch-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .batch-check-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .batch-assign-hint {
+      font-size: 12px;
+      font-weight: 500;
+      color: #4338ca;
+      background: #e0e7ff;
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-left: 6px;
+    }
+    .batch-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-batch-cancel {
+      color: #64748b;
+      font-weight: 700;
+    }
+    .btn-batch-cancel:hover {
+      background: #e2e8f0;
+      color: var(--text);
+    }
+
+    /* ── Search Profiles Input Section ── */
+    .search-profiles-section {
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #ffffff;
+    }
+    .search-profiles-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      transition: all .15s ease;
+    }
+    .search-profiles-input-wrap:focus-within {
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+    .search-profiles-icon {
+      font-size: 12px;
+      color: #94a3b8;
+      user-select: none;
+    }
+    .search-profiles-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 12.5px;
+      font-family: inherit;
+      color: var(--text);
+    }
+    .search-profiles-input::placeholder {
+      color: #94a3b8;
+    }
+    .search-profiles-clear {
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .search-profiles-clear:hover {
+      color: var(--danger);
+    }
+
+    /* Selection Mode Hover Effect on Profiles List */
+    .is-selection-mode .profiles-list .profile-card {
+      cursor: pointer;
+      transition: all .15s ease;
+      border-color: #c7d2fe;
+    }
+    .is-selection-mode .profiles-list .profile-card:hover {
+      border-color: var(--accent);
+      background: #f5f7ff;
+      transform: translateX(-3px);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.14);
+    }
+    .profile-card-assign-hint {
+      display: none;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      background: #e0e7ff;
+      padding: 3px 7px;
+      border-radius: 5px;
+      margin-left: auto;
+      margin-right: 6px;
+      white-space: nowrap;
+    }
+    .is-selection-mode .profiles-list .profile-card:hover .profile-card-assign-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* Selected turn card styling */
+    .turn-card.selected-turn-card {
+      border-color: #6366f1 !important;
+      background: #f8faff !important;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.22) !important;
+      position: relative;
+    }
+    .card-select-checkbox {
+      width: 19px;
+      height: 19px;
+      border-radius: 5px;
+      border: 1.5px solid #cbd5e1;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all .12s;
+      user-select: none;
+    }
+    .card-select-checkbox:hover {
+      border-color: var(--accent);
+      background: #f5f7ff;
+    }
+    .turn-card.selected-turn-card .card-select-checkbox {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
 
     .btn-sm {
       padding: 6px 12px;
@@ -324,6 +1078,13 @@
       background: #fafbfc;
     }
 
+    .create-user-fields {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
     .new-avatar-picker-btn {
       width: 44px;
       height: 44px;
@@ -355,7 +1116,6 @@
     }
 
     .create-user-input {
-      flex: 1;
       padding: 9px 14px;
       font-size: 13.5px;
       border: 1px solid var(--border);
@@ -448,6 +1208,12 @@
       color: var(--text);
     }
 
+    .profile-company {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
     .profile-samples {
       font-size: 11px;
       color: var(--muted);
@@ -506,6 +1272,96 @@
     .btn-filter.active .count-badge {
       background: rgba(255, 255, 255, 0.28);
       color: #fff;
+    }
+
+    /* ── Quick Assign Mode (Double-click Profile to Paint/Assign) ── */
+    .profile-card.active-assign-mode {
+      border-color: #6366f1 !important;
+      background: #f5f7ff !important;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), 0 4px 12px rgba(99, 102, 241, 0.15) !important;
+      position: relative;
+    }
+    .profile-card.active-assign-mode::before {
+      content: '🎯 ACTIVE ASSIGN MODE · Dbl-click to exit';
+      position: absolute;
+      top: -10px;
+      left: 12px;
+      background: #6366f1;
+      color: #fff;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 8px;
+      border-radius: 10px;
+      letter-spacing: 0.3px;
+      box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+      pointer-events: none;
+    }
+
+    .quick-assign-banner {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: #ffffff;
+      padding: 9px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+      z-index: 50;
+      animation: bannerSlideDown 0.15s ease-out;
+    }
+    @keyframes bannerSlideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .quick-assign-banner strong {
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .btn-exit-quick-assign {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #fff;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .btn-exit-quick-assign:hover {
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    body.is-quick-assign-mode .frontend-col .turn-line {
+      cursor: pointer !important;
+      position: relative;
+      transition: background 0.12s, outline 0.12s;
+    }
+    body.is-quick-assign-mode .frontend-col .turn-line:hover {
+      background: #eef2ff !important;
+      outline: 1.5px dashed #6366f1;
+      border-radius: 4px;
+    }
+
+    body.is-quick-assign-mode .turns-col .turn-card {
+      cursor: pointer !important;
+      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    body.is-quick-assign-mode .turns-col .turn-card:hover {
+      border-color: #6366f1 !important;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3) !important;
+    }
+
+    @keyframes flashAssignSuccess {
+      0% { background: #dcfce7 !important; transform: scale(1.01); }
+      50% { background: #bbf7d0 !important; }
+      100% { transform: scale(1); }
+    }
+    .flash-assign-success {
+      animation: flashAssignSuccess 0.45s ease-out;
     }
 
     /* Empty state */
@@ -714,13 +1570,26 @@
       </div>
     </div>
 
+    <!-- FLOATING LEFT PANEL SPEAKER REASSIGN PICKER -->
+    <div class="left-panel-picker-menu" id="leftPanelSpeakerPicker" style="display:none;">
+      <div class="left-panel-picker-header">
+        <span class="left-panel-picker-title">⚡ One-Off Reassign</span>
+        <span class="left-panel-picker-sub">Isolated fix · Excluded from centroid</span>
+      </div>
+      <div class="left-panel-picker-search-wrap">
+        <span class="left-panel-picker-search-icon">🔍</span>
+        <input type="text" class="left-panel-picker-input" id="leftPanelPickerInput" placeholder="Search or type name..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="left-panel-picker-list" id="leftPanelPickerList"></div>
+    </div>
+
     <!-- Hidden file inputs for avatar upload -->
     <input type="file" id="avatarFileInput" accept="image/*" style="display:none">
     <input type="file" id="newUserAvatarFileInput" accept="image/*" style="display:none">
 
     <!-- HEADER -->
     <header>
-      <span class="header-title">DEEBUG</span>
+      <span class="header-title"><span class="brand-logo"><span class="logo-dee">dee</span><span class="logo-bug">bug</span><sup class="logo-tag">&lt;/&gt;</sup></span></span>
       <span class="header-tag">Admin Panel</span>
       <div class="header-actions">
         <button class="btn btn-transcribe-toggle running" id="btnToggleTranscribe" title="Pause or resume live transcription without disconnecting WebSocket">
@@ -735,15 +1604,60 @@
     <!-- MAIN -->
     <div class="main-body">
 
-      <!-- LEFT: Live Turns -->
+      <!-- LEFT: Live Frontend Conversation View (Speaker Grouped) -->
+      <div class="frontend-col">
+        <div class="col-header">
+          <span>Live Conversation</span>
+          <span class="count-badge" id="frontendSpkCount">0 speakers</span>
+        </div>
+        <div id="frontendSpeakerContainer">
+          <div class="empty-state" id="emptyFrontendState">
+            Waiting for live speech…<br>
+            Speaker boxes will appear here as people speak.
+          </div>
+        </div>
+      </div>
+
+      <!-- MIDDLE: Live Turns Tagging & Mapping -->
       <div class="turns-col">
         <div class="col-header">
           <span>Live Meeting Turns</span>
           <span class="count-badge" id="turnsCount">0</span>
-          <button class="btn-filter" id="btnAdminFilterPending" title="Filter pending unassigned turns" style="margin-left:auto;">
-            Pending <span class="count-badge" id="pendingCount">0</span>
-          </button>
+
+          <div class="header-filters-wrap">
+            <!-- Searchable Speaker Filter Combobox for 70+ Speakers -->
+            <div class="combobox-container speaker-filter-combobox" id="speakerFilterCombobox" data-type="filter">
+              <div class="combobox-trigger" title="Filter turns by speaker">
+                <span class="combobox-avatar-mini" id="filterSpeakerAvatar">🔍</span>
+                <input type="text" class="combobox-input" id="filterSpeakerInput" placeholder="Filter by speaker (e.g. Vinay)..." autocomplete="off" spellcheck="false">
+                <button type="button" class="combobox-clear-btn" id="btnClearSpeakerFilter" title="Clear filter" style="display:none;">✕</button>
+                <span class="combobox-arrow">▾</span>
+              </div>
+              <div class="combobox-dropdown" id="speakerFilterDropdown" style="display:none;">
+                <div class="combobox-list" id="speakerFilterList"></div>
+              </div>
+            </div>
+
+            <button class="btn-filter" id="btnAdminFilterPending" title="Filter pending unassigned turns">
+              Pending <span class="count-badge" id="pendingCount">0</span>
+            </button>
+          </div>
         </div>
+
+        <!-- BATCH SELECTION ACTION BAR -->
+        <div class="batch-action-bar" id="batchActionBar" style="display:none;">
+          <div class="batch-info">
+            <span class="batch-check-icon">✓</span>
+            <span class="batch-count-text" id="batchCountText">0 selected</span>
+            <span class="batch-assign-hint">👉 Click any profile in sidebar to assign</span>
+          </div>
+          <div class="batch-controls">
+            <button class="btn btn-sm btn-danger" id="btnBatchDelete" title="Delete all selected turns">🗑️ Delete</button>
+            <button class="btn btn-sm" id="btnBatchSelectAll">Select All</button>
+            <button class="btn btn-sm btn-batch-cancel" id="btnBatchCancel" title="Cancel selection (Esc)">✕</button>
+          </div>
+        </div>
+
         <div class="turns-container" id="turnsContainer">
           <div class="empty-state" id="emptyTurns">
             Waiting for turns from live meeting…<br>
@@ -767,8 +1681,20 @@
             </svg>
             <img id="newAvatarPreviewImg" class="new-avatar-preview-img" style="display:none" alt="Avatar Preview">
           </button>
-          <input class="create-user-input" id="newUserNameInput" placeholder="New user name (e.g. Raj)">
+          <div class="create-user-fields">
+            <input class="create-user-input" id="newUserNameInput" placeholder="New user name (e.g. Raj)">
+            <input class="create-user-input" id="newUserCompanyInput" placeholder="Company name">
+          </div>
           <button class="btn btn-primary" id="btnCreateUser">Add</button>
+        </div>
+
+        <!-- SEARCH PROFILES BAR -->
+        <div class="search-profiles-section">
+          <div class="search-profiles-input-wrap">
+            <span class="search-profiles-icon">🔍</span>
+            <input class="search-profiles-input" id="searchProfilesInput" placeholder="Search profiles (e.g. Vinay)..." autocomplete="off" spellcheck="false">
+            <button type="button" class="search-profiles-clear" id="btnClearSearchProfiles" style="display:none;" title="Clear search">✕</button>
+          </div>
         </div>
 
         <div class="profiles-list" id="profilesList">
@@ -805,6 +1731,7 @@
       const newAvatarPreviewImg = document.getElementById('newAvatarPreviewImg');
 
       const newUserNameInput = document.getElementById('newUserNameInput');
+      const newUserCompanyInput = document.getElementById('newUserCompanyInput');
       const btnCreateUser = document.getElementById('btnCreateUser');
       const btnClearTurns = document.getElementById('btnClearTurns');
       const btnClearAll = document.getElementById('btnClearAll');
@@ -813,9 +1740,61 @@
 
       let userNames = [];
       let registeredUsers = [];
+      let currentTurnsList = [];
+      let currentSpeakerFilter = '';
       let activeUploadTargetUser = null;
       let newUserAvatarB64 = null;
       let isAdminPendingFilterActive = false;
+      let activeAssignProfile = null;
+
+      function setQuickAssignProfile(name) {
+        if (!name || (activeAssignProfile && activeAssignProfile.toLowerCase() === name.toLowerCase())) {
+          activeAssignProfile = null;
+          document.body.classList.remove('is-quick-assign-mode');
+          footerStatus.textContent = 'Quick assign mode exited';
+        } else {
+          activeAssignProfile = name;
+          document.body.classList.add('is-quick-assign-mode');
+          footerStatus.textContent = `🎯 Quick assign mode: click any turn line or card to assign to ${name}`;
+        }
+        updateQuickAssignUI();
+      }
+
+      function updateQuickAssignUI() {
+        // Update or inject top banner
+        let banner = document.getElementById('quickAssignBanner');
+        if (activeAssignProfile) {
+          if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'quickAssignBanner';
+            banner.className = 'quick-assign-banner';
+            const header = document.querySelector('header');
+            if (header && header.parentNode) {
+              header.parentNode.insertBefore(banner, header.nextSibling);
+            }
+          }
+          banner.innerHTML = `
+            <span>🎯 <strong>Quick Assign Active:</strong> Click any turn line (left) or turn card (middle) to assign to <strong>${escapeHtml(activeAssignProfile)}</strong></span>
+            <button type="button" class="btn-exit-quick-assign" id="btnExitQuickAssign">Exit Mode (Esc)</button>
+          `;
+          banner.style.display = 'flex';
+          const exitBtn = banner.querySelector('#btnExitQuickAssign');
+          if (exitBtn) exitBtn.addEventListener('click', () => setQuickAssignProfile(null));
+        } else if (banner) {
+          banner.style.display = 'none';
+        }
+
+        // Highlight matching profile card
+        profilesList.querySelectorAll('.profile-card').forEach(card => {
+          const nameEl = card.querySelector('.profile-name');
+          const cardName = nameEl ? nameEl.textContent.trim() : '';
+          if (activeAssignProfile && cardName.toLowerCase() === activeAssignProfile.toLowerCase()) {
+            card.classList.add('active-assign-mode');
+          } else {
+            card.classList.remove('active-assign-mode');
+          }
+        });
+      }
 
       function escapeHtml(s) {
         const d = document.createElement('div');
@@ -832,14 +1811,43 @@
 
       function applyAdminTurnsFilter() {
         const cards = turnsContainer.querySelectorAll('.turn-card');
+        let visibleCount = 0;
+        const cleanSpeaker = currentSpeakerFilter.trim().toLowerCase();
+
         cards.forEach(card => {
-          if (!isAdminPendingFilterActive) {
+          const to = parseInt(card.id.replace('t-', ''));
+          const turnObj = currentTurnsList.find(t => t.turn_order === to);
+
+          let matchesPending = true;
+          if (isAdminPendingFilterActive) {
+            matchesPending = turnObj ? !turnObj.tagged_as : true;
+          }
+
+          let matchesSpeaker = true;
+          if (cleanSpeaker) {
+            if (turnObj) {
+              const tagged = (turnObj.tagged_as || '').toLowerCase();
+              const pred = (turnObj.predicted_speaker || '').toLowerCase();
+              matchesSpeaker = (tagged === cleanSpeaker || (!tagged && pred === cleanSpeaker));
+            } else {
+              matchesSpeaker = false;
+            }
+          }
+
+          if (matchesPending && matchesSpeaker) {
             card.style.display = 'flex';
+            visibleCount++;
           } else {
-            const isTagged = card.querySelector('.turn-badge.tagged');
-            card.style.display = isTagged ? 'none' : 'flex';
+            card.style.display = 'none';
           }
         });
+
+        const total = currentTurnsList.length;
+        if (cleanSpeaker || isAdminPendingFilterActive) {
+          turnsCount.textContent = `${visibleCount} of ${total}`;
+        } else {
+          turnsCount.textContent = `${total}`;
+        }
       }
 
       // ── New User Avatar Picker ─────────────────────────────────────────────
@@ -931,9 +1939,10 @@
       // ── Create User ───────────────────────────────────────────────────────
       async function createUser() {
         const name = newUserNameInput.value.trim();
+        const companyName = newUserCompanyInput.value.trim();
         if (!name) return;
         try {
-          const payload = { name };
+          const payload = { name, company_name: companyName };
           if (newUserAvatarB64) payload.avatar_b64 = newUserAvatarB64;
 
           const resp = await fetch('/api/create-user', {
@@ -943,6 +1952,7 @@
           });
           if (resp.ok) {
             newUserNameInput.value = '';
+            newUserCompanyInput.value = '';
             resetNewUserAvatar();
             await pollUsers();
             footerStatus.textContent = `User "${name}" created`;
@@ -1196,12 +2206,30 @@
                 </div>
                 <div class="profile-info">
                   <div class="profile-name">${escapeHtml(u.name)}</div>
+                  ${u.company_name ? `<div class="profile-company">${escapeHtml(u.company_name)}</div>` : ''}
                   <div class="profile-samples">${samplesText}</div>
                 </div>
+                <span class="profile-card-assign-hint">👉 Assign</span>
                 <button class="btn-voice-enroll" data-name="${escapeHtml(u.name)}" title="Record a 30s-60s voice sample for ${escapeHtml(u.name)}">🎙️ Record</button>
                 <div class="profile-status-dot ${hasVp ? 'active' : ''}"></div>
                 <button class="btn-del-profile" title="Delete Profile">✕</button>
               `;
+
+              // Bind double-click to toggle Quick Assign Mode
+              card.addEventListener('dblclick', (e) => {
+                if (e.target.closest('.btn-del-profile') || e.target.closest('.btn-voice-enroll') || e.target.closest('.profile-avatar')) return;
+                e.preventDefault();
+                if (window.getSelection) window.getSelection().removeAllRanges();
+                setQuickAssignProfile(u.name);
+              });
+
+              // Bind card click to batch assign if cards are selected
+              card.addEventListener('click', (e) => {
+                if (e.target.closest('.btn-del-profile') || e.target.closest('.btn-voice-enroll') || e.target.closest('.profile-avatar')) return;
+                if (selectedTurnOrders.size > 0) {
+                  applyBatchAssign(u.name);
+                }
+              });
 
               // Bind upload avatar click
               const avatarEl = card.querySelector('.profile-avatar');
@@ -1223,6 +2251,18 @@
               // Update in-place
               const samplesEl = card.querySelector('.profile-samples');
               if (samplesEl && samplesEl.textContent !== samplesText) samplesEl.textContent = samplesText;
+
+              const companyName = u.company_name || '';
+              let companyEl = card.querySelector('.profile-company');
+              if (companyName && !companyEl) {
+                companyEl = document.createElement('div');
+                companyEl.className = 'profile-company';
+                samplesEl.insertAdjacentElement('beforebegin', companyEl);
+              }
+              if (companyEl) {
+                if (companyName) companyEl.textContent = companyName;
+                else companyEl.remove();
+              }
 
               const dotEl = card.querySelector('.profile-status-dot');
               if (dotEl) dotEl.className = 'profile-status-dot ' + (hasVp ? 'active' : '');
@@ -1247,6 +2287,13 @@
                 recordBtn.addEventListener('click', () => openEnrollModal(u.name));
               }
             }
+
+            // Sync quick assign state on card
+            if (activeAssignProfile && u.name.toLowerCase() === activeAssignProfile.toLowerCase()) {
+              card.classList.add('active-assign-mode');
+            } else {
+              card.classList.remove('active-assign-mode');
+            }
           });
 
           // Remove any deleted profiles
@@ -1257,25 +2304,1057 @@
           });
 
           // Sync options into all turn cards
-          updateAllSelectDropdowns();
+          updateAllComboboxes();
+          renderFrontendSpeakerBoxes(currentTurnsList);
 
         } catch (e) {}
       }
 
-      function updateAllSelectDropdowns() {
-        turnsContainer.querySelectorAll('.turn-card').forEach(card => {
-          const selectEl = card.querySelector('.turn-select');
-          if (selectEl && document.activeElement !== selectEl) {
-            const currentVal = selectEl.value;
-            const newHtml = buildSelectOptions(currentVal);
-            if (selectEl.dataset.cachedHtml !== newHtml) {
-              selectEl.innerHTML = newHtml;
-              selectEl.dataset.cachedHtml = newHtml;
-              if (currentVal) selectEl.value = currentVal;
+      function findUserDetails(name) {
+        if (!name) return null;
+        return registeredUsers.find(u => (u.name || '').toLowerCase() === name.toLowerCase()) || { name, has_voiceprint: false, avatar_b64: null };
+      }
+
+      function renderAvatarHtml(u, fallbackName) {
+        const displayName = (u && u.name) || fallbackName || '';
+        const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+        if (u && u.avatar_b64) {
+          return `<img src="${u.avatar_b64}" alt="${escapeHtml(displayName)}">`;
+        }
+        return initials;
+      }
+
+      function buildComboboxHtml(turnOrder, currentAssignment) {
+        const userObj = findUserDetails(currentAssignment);
+        const avatarInner = currentAssignment ? renderAvatarHtml(userObj, currentAssignment) : '👤';
+        const hasAssignment = !!currentAssignment;
+        return `
+          <div class="combobox-container" data-turn="${turnOrder}">
+            <div class="combobox-trigger">
+              <span class="combobox-avatar-mini">${avatarInner}</span>
+              <input type="text" class="combobox-input" placeholder="Search speaker (e.g. Vinay)..." value="${escapeHtml(currentAssignment)}" data-saved-val="${escapeHtml(currentAssignment)}" autocomplete="off" spellcheck="false">
+              <button type="button" class="combobox-clear-btn" title="Clear assignment" style="${hasAssignment ? 'display:flex' : 'display:none'}">✕</button>
+              <span class="combobox-arrow">▾</span>
+            </div>
+            <div class="combobox-dropdown" style="display:none;">
+              <div class="combobox-list"></div>
+            </div>
+          </div>
+        `;
+      }
+
+      function closeAllComboboxes(exceptContainer = null) {
+        document.querySelectorAll('.combobox-container.open').forEach(c => {
+          if (c !== exceptContainer) {
+            c.classList.remove('open');
+            const dd = c.querySelector('.combobox-dropdown');
+            if (dd) dd.style.display = 'none';
+            // Revert input to saved value if closed without selecting
+            const input = c.querySelector('.combobox-input');
+            if (input && input.dataset.savedVal !== undefined) {
+              input.value = input.dataset.savedVal;
+              updateComboboxAvatar(c, input.dataset.savedVal);
             }
           }
         });
       }
+
+      function updateComboboxAvatar(container, name) {
+        const avatarEl = container.querySelector('.combobox-avatar-mini');
+        const clearBtn = container.querySelector('.combobox-clear-btn');
+        if (!avatarEl) return;
+        if (name) {
+          const userObj = findUserDetails(name);
+          avatarEl.innerHTML = renderAvatarHtml(userObj, name);
+          if (clearBtn) clearBtn.style.display = 'flex';
+        } else {
+          avatarEl.innerHTML = '👤';
+          if (clearBtn) clearBtn.style.display = 'none';
+        }
+      }
+
+      function renderComboboxDropdown(container, query = '') {
+        const isFilterCombobox = (container.id === 'speakerFilterCombobox' || container.dataset.type === 'filter');
+        const turnOrder = isFilterCombobox ? null : parseInt(container.dataset.turn);
+        const listEl = container.querySelector('.combobox-list');
+        const inputEl = container.querySelector('.combobox-input');
+        const currentVal = (inputEl.dataset.savedVal || '').trim();
+        const cleanQ = (query || '').trim().toLowerCase();
+
+        // 1. Filter registered users by substring matching
+        let matches = registeredUsers.filter(u => {
+          if (!cleanQ) return true;
+          return (u.name || '').toLowerCase().includes(cleanQ);
+        });
+
+        // Also check if any userNames not in registeredUsers matches
+        userNames.forEach(n => {
+          if (!matches.some(u => u.name.toLowerCase() === n.toLowerCase())) {
+            if (!cleanQ || n.toLowerCase().includes(cleanQ)) {
+              matches.push({ name: n, has_voiceprint: false, avatar_b64: null });
+            }
+          }
+        });
+
+        // Sort matches: names starting with query first, then containing
+        if (cleanQ) {
+          matches.sort((a, b) => {
+            const aStarts = (a.name || '').toLowerCase().startsWith(cleanQ);
+            const bStarts = (b.name || '').toLowerCase().startsWith(cleanQ);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+        }
+
+        let html = '';
+
+        if (isFilterCombobox) {
+          // Calculate turn counts for each speaker in current meeting
+          const speakerCounts = {};
+          currentTurnsList.forEach(t => {
+            const spk = (t.tagged_as || t.predicted_speaker || '').trim().toLowerCase();
+            if (spk) speakerCounts[spk] = (speakerCounts[spk] || 0) + 1;
+          });
+
+          // Top "All Speakers" option
+          const isAllActive = !currentSpeakerFilter && !cleanQ;
+          html += `
+            <div class="combobox-item-all ${isAllActive ? 'active' : ''}" data-action="all">
+              <span>🌟 All Speakers</span>
+              <span class="combobox-item-turns-count">${currentTurnsList.length} turns</span>
+            </div>
+          `;
+
+          if (matches.length === 0 && cleanQ) {
+            html += `<div style="padding:14px;text-align:center;color:#94a3b8;font-size:12px;">No speaker matches "${escapeHtml(query)}"</div>`;
+          } else {
+            matches.forEach((u, idx) => {
+              const name = u.name;
+              const isSel = (name.toLowerCase() === currentSpeakerFilter.toLowerCase());
+              const isActive = (idx === 0 && cleanQ);
+              const avatarHtml = renderAvatarHtml(u, name);
+              const count = speakerCounts[name.toLowerCase()] || 0;
+
+              let nameHtml = escapeHtml(name);
+              if (cleanQ) {
+                const regex = new RegExp(`(${cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                nameHtml = nameHtml.replace(regex, '<mark>$1</mark>');
+              }
+
+              html += `
+                <div class="combobox-item ${isSel ? 'selected' : ''} ${isActive ? 'active' : ''}" data-name="${escapeHtml(name)}" data-index="${idx}">
+                  <span class="combobox-item-avatar">${avatarHtml}</span>
+                  <span class="combobox-item-name">${nameHtml}</span>
+                  <span class="combobox-item-turns-count">${count} turn${count !== 1 ? 's' : ''}</span>
+                </div>
+              `;
+            });
+          }
+
+          listEl.innerHTML = html;
+          return matches;
+        }
+
+        // Standard Turn Card Combobox
+        if (matches.length === 0 && !cleanQ) {
+          html = `<div style="padding:14px;text-align:center;color:#94a3b8;font-size:12px;">No registered speakers yet.<br>Type a name to search or create.</div>`;
+        } else {
+          matches.forEach((u, idx) => {
+            const name = u.name;
+            const isSel = (name.toLowerCase() === currentVal.toLowerCase());
+            const isActive = (idx === 0);
+            const avatarHtml = renderAvatarHtml(u, name);
+
+            // Highlight matching substring
+            let nameHtml = escapeHtml(name);
+            if (cleanQ) {
+              const regex = new RegExp(`(${cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+              nameHtml = nameHtml.replace(regex, '<mark>$1</mark>');
+            }
+
+            const vpBadge = u.has_voiceprint 
+              ? `<span class="combobox-item-badge enrolled" title="Voiceprint centroid active">✓ Voiceprint</span>` 
+              : `<span class="combobox-item-badge">Unenrolled</span>`;
+
+            html += `
+              <div class="combobox-item ${isSel ? 'selected' : ''} ${isActive ? 'active' : ''}" data-name="${escapeHtml(name)}" data-index="${idx}">
+                <span class="combobox-item-avatar">${avatarHtml}</span>
+                <span class="combobox-item-name">${nameHtml}</span>
+                ${vpBadge}
+              </div>
+            `;
+          });
+        }
+
+        // If user typed a search query that doesn't match an existing user exactly, show Create & Assign
+        const exactMatch = registeredUsers.some(u => (u.name || '').toLowerCase() === cleanQ) || userNames.some(n => n.toLowerCase() === cleanQ);
+        if (cleanQ && !exactMatch) {
+          const isNewActive = matches.length === 0;
+          html += `
+            <div class="combobox-item-new ${isNewActive ? 'active' : ''}" data-action="new" data-name="${escapeHtml(query.trim())}">
+              <span>➕</span>
+              <span>Create & assign <strong>"${escapeHtml(query.trim())}"</strong></span>
+            </div>
+          `;
+        }
+
+        listEl.innerHTML = html;
+        return matches;
+      }
+
+      function openCombobox(container) {
+        closeAllComboboxes(container);
+        container.classList.add('open');
+        const dd = container.querySelector('.combobox-dropdown');
+        if (dd) dd.style.display = 'flex';
+        const input = container.querySelector('.combobox-input');
+        renderComboboxDropdown(container, input ? input.value : '');
+      }
+
+      function bindComboboxEvents(container, turnOrder) {
+        const isFilterCombobox = (container.id === 'speakerFilterCombobox' || container.dataset.type === 'filter');
+        const input = container.querySelector('.combobox-input');
+        const trigger = container.querySelector('.combobox-trigger');
+        const dd = container.querySelector('.combobox-dropdown');
+        const list = container.querySelector('.combobox-list');
+        const clearBtn = container.querySelector('.combobox-clear-btn');
+
+        function applySpeakerFilter(targetName) {
+          currentSpeakerFilter = (targetName || '').trim();
+          if (currentSpeakerFilter) {
+            input.value = currentSpeakerFilter;
+            input.dataset.savedVal = currentSpeakerFilter;
+            updateComboboxAvatar(container, currentSpeakerFilter);
+            container.classList.add('filter-active');
+            if (clearBtn) clearBtn.style.display = 'flex';
+          } else {
+            input.value = '';
+            input.dataset.savedVal = '';
+            const avatarEl = container.querySelector('.combobox-avatar-mini');
+            if (avatarEl) avatarEl.innerHTML = '🔍';
+            container.classList.remove('filter-active');
+            if (clearBtn) clearBtn.style.display = 'none';
+          }
+          closeAllComboboxes();
+          applyAdminTurnsFilter();
+        }
+
+        if (trigger && input) {
+          trigger.addEventListener('click', (e) => {
+            if (e.target.closest('.combobox-clear-btn')) return;
+            e.stopPropagation();
+            input.focus();
+            if (!container.classList.contains('open')) {
+              openCombobox(container);
+            }
+          });
+        }
+
+        if (input) {
+          input.addEventListener('focus', () => {
+            openCombobox(container);
+            input.select();
+          });
+
+          input.addEventListener('input', (e) => {
+            if (!container.classList.contains('open')) {
+              openCombobox(container);
+            }
+            const typedVal = input.value;
+            const matches = renderComboboxDropdown(container, typedVal);
+
+            // If empty in filter, reset filter
+            if (isFilterCombobox && !typedVal.trim()) {
+              currentSpeakerFilter = '';
+              container.classList.remove('filter-active');
+              if (clearBtn) clearBtn.style.display = 'none';
+              const avatarEl = container.querySelector('.combobox-avatar-mini');
+              if (avatarEl) avatarEl.innerHTML = '🔍';
+              applyAdminTurnsFilter();
+            }
+
+            // Inline auto-fill topmost match
+            if (e.inputType !== 'deleteContentBackward' && e.inputType !== 'deleteContentForward' && typedVal.trim()) {
+              if (matches && matches.length > 0) {
+                const topName = matches[0].name;
+                if (topName.toLowerCase().startsWith(typedVal.toLowerCase())) {
+                  const completed = typedVal + topName.slice(typedVal.length);
+                  input.value = completed;
+                  input.setSelectionRange(typedVal.length, completed.length);
+                  updateComboboxAvatar(container, topName);
+                }
+              }
+            }
+          });
+
+          input.addEventListener('keydown', async (e) => {
+            const items = Array.from(list.querySelectorAll('.combobox-item, .combobox-item-new, .combobox-item-all'));
+            let activeItem = list.querySelector('.combobox-item.active, .combobox-item-new.active, .combobox-item-all.active');
+            let activeIdx = activeItem ? items.indexOf(activeItem) : -1;
+
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              if (!container.classList.contains('open')) {
+                openCombobox(container);
+                return;
+              }
+              if (activeItem) activeItem.classList.remove('active');
+              activeIdx = (activeIdx + 1) % items.length;
+              if (items[activeIdx]) {
+                items[activeIdx].classList.add('active');
+                items[activeIdx].scrollIntoView({ block: 'nearest' });
+                if (items[activeIdx].dataset.action === 'all') {
+                  input.value = '';
+                  const avatarEl = container.querySelector('.combobox-avatar-mini');
+                  if (avatarEl) avatarEl.innerHTML = '🔍';
+                } else if (items[activeIdx].dataset.name) {
+                  input.value = items[activeIdx].dataset.name;
+                  updateComboboxAvatar(container, items[activeIdx].dataset.name);
+                }
+              }
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (!container.classList.contains('open')) {
+                openCombobox(container);
+                return;
+              }
+              if (activeItem) activeItem.classList.remove('active');
+              activeIdx = (activeIdx - 1 + items.length) % items.length;
+              if (items[activeIdx]) {
+                items[activeIdx].classList.add('active');
+                items[activeIdx].scrollIntoView({ block: 'nearest' });
+                if (items[activeIdx].dataset.action === 'all') {
+                  input.value = '';
+                  const avatarEl = container.querySelector('.combobox-avatar-mini');
+                  if (avatarEl) avatarEl.innerHTML = '🔍';
+                } else if (items[activeIdx].dataset.name) {
+                  input.value = items[activeIdx].dataset.name;
+                  updateComboboxAvatar(container, items[activeIdx].dataset.name);
+                }
+              }
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+              if (isFilterCombobox) {
+                e.preventDefault();
+                let targetName = '';
+                if (activeItem) {
+                  if (activeItem.dataset.action === 'all') {
+                    applySpeakerFilter('');
+                    return;
+                  }
+                  targetName = activeItem.dataset.name;
+                } else if (items.length > 0 && items[0].dataset.name) {
+                  targetName = items[0].dataset.name;
+                } else if (input.value.trim()) {
+                  targetName = input.value.trim();
+                }
+                applySpeakerFilter(targetName);
+                return;
+              }
+
+              let targetName = '';
+              if (activeItem) {
+                targetName = activeItem.dataset.name;
+              } else if (items.length > 0) {
+                targetName = items[0].dataset.name;
+              } else if (input.value.trim()) {
+                targetName = input.value.trim();
+              }
+
+              if (targetName) {
+                e.preventDefault();
+                input.value = targetName;
+                input.dataset.savedVal = targetName;
+                updateComboboxAvatar(container, targetName);
+                closeAllComboboxes();
+                await assignTurn(turnOrder, targetName);
+              }
+            } else if (e.key === 'Escape') {
+              closeAllComboboxes();
+              input.blur();
+            }
+          });
+        }
+
+        if (list) {
+          list.addEventListener('click', async (e) => {
+            const allItem = e.target.closest('.combobox-item-all');
+            if (allItem) {
+              if (isFilterCombobox) applySpeakerFilter('');
+              return;
+            }
+
+            const item = e.target.closest('.combobox-item, .combobox-item-new');
+            if (item) {
+              const name = item.dataset.name;
+              if (isFilterCombobox) {
+                applySpeakerFilter(name);
+              } else if (name) {
+                input.value = name;
+                input.dataset.savedVal = name;
+                updateComboboxAvatar(container, name);
+                closeAllComboboxes();
+                await assignTurn(turnOrder, name);
+              }
+            }
+          });
+        }
+
+        if (clearBtn) {
+          clearBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (isFilterCombobox) {
+              applySpeakerFilter('');
+            } else {
+              input.value = '';
+              input.dataset.savedVal = '';
+              updateComboboxAvatar(container, '');
+              closeAllComboboxes();
+            }
+          });
+        }
+      }
+
+      // Close dropdowns when clicking anywhere outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.combobox-container')) {
+          closeAllComboboxes();
+        }
+      });
+
+      function updateAllComboboxes() {
+        const filterBox = document.getElementById('speakerFilterCombobox');
+        if (filterBox && filterBox.classList.contains('open')) {
+          const input = filterBox.querySelector('.combobox-input');
+          renderComboboxDropdown(filterBox, input ? input.value : '');
+        }
+
+        turnsContainer.querySelectorAll('.turn-card').forEach(card => {
+          const container = card.querySelector('.combobox-container');
+          if (container && container.classList.contains('open')) {
+            const input = container.querySelector('.combobox-input');
+            renderComboboxDropdown(container, input ? input.value : '');
+          }
+        });
+      }
+
+      // ── Multi-Select Batch Actions ─────────────────────────────────────────
+      const selectedTurnOrders = new Set();
+
+      function toggleCardSelection(turnOrder) {
+        if (selectedTurnOrders.has(turnOrder)) {
+          selectedTurnOrders.delete(turnOrder);
+        } else {
+          selectedTurnOrders.add(turnOrder);
+        }
+        updateSelectionUI();
+      }
+
+      function updateSelectionUI() {
+        const count = selectedTurnOrders.size;
+        const batchBar = document.getElementById('batchActionBar');
+        const countText = document.getElementById('batchCountText');
+        const container = document.getElementById('turnsContainer');
+
+        if (count > 0) {
+          batchBar.style.display = 'flex';
+          countText.textContent = `${count} turn${count > 1 ? 's' : ''} selected`;
+          container.classList.add('is-selection-mode');
+        } else {
+          batchBar.style.display = 'none';
+          container.classList.remove('is-selection-mode');
+          closeAllComboboxes();
+        }
+
+        // Update visual selection on each card
+        container.querySelectorAll('.turn-card').forEach(card => {
+          const to = parseInt(card.id.replace('t-', ''));
+          if (selectedTurnOrders.has(to)) {
+            card.classList.add('selected-turn-card');
+          } else {
+            card.classList.remove('selected-turn-card');
+          }
+        });
+      }
+
+      function clearSelection() {
+        selectedTurnOrders.clear();
+        updateSelectionUI();
+      }
+
+      function selectAllTurns() {
+        const visibleCards = turnsContainer.querySelectorAll('.turn-card');
+        visibleCards.forEach(c => {
+          if (c.style.display !== 'none') {
+            const to = parseInt(c.id.replace('t-', ''));
+            if (!isNaN(to)) selectedTurnOrders.add(to);
+          }
+        });
+        updateSelectionUI();
+      }
+
+      async function applyBatchAssign(speakerName) {
+        const name = (speakerName || '').trim();
+        if (!name) return;
+        const orders = Array.from(selectedTurnOrders);
+        if (orders.length === 0) return;
+
+        // Optimistic UI updates
+        orders.forEach(to => {
+          const card = document.getElementById('t-' + to);
+          if (card) {
+            const badgeEl = card.querySelector('.turn-badge:not(.mixed)');
+            if (badgeEl) {
+              badgeEl.className = 'turn-badge tagged';
+              badgeEl.textContent = `✓ Tagged: ${name}`;
+            }
+            const input = card.querySelector('.combobox-input');
+            if (input) {
+              input.value = name;
+              input.dataset.savedVal = name;
+              const combobox = card.querySelector('.combobox-container');
+              if (combobox) updateComboboxAvatar(combobox, name);
+            }
+          }
+        });
+
+        clearSelection();
+        footerStatus.textContent = `Assigning ${orders.length} turns to ${name}...`;
+
+        try {
+          await Promise.all(orders.map(to => 
+            fetch('/api/tag-turn-from-admin', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ turn_order: to, speaker_name: name })
+            })
+          ));
+          pollUsers();
+          pollTurns();
+          footerStatus.textContent = `✓ ${orders.length} turns assigned to ${name}`;
+        } catch (e) {
+          console.error('Batch assign failed:', e);
+        }
+      }
+
+      async function applyBatchDelete() {
+        const orders = Array.from(selectedTurnOrders);
+        if (orders.length === 0) return;
+        if (!confirm(`Delete all ${orders.length} selected turns? This will permanently remove them.`)) return;
+
+        // Optimistic remove from DOM
+        orders.forEach(to => {
+          const card = document.getElementById('t-' + to);
+          if (card) card.remove();
+        });
+
+        const currentCount = parseInt(turnsCount.textContent || '0');
+        turnsCount.textContent = Math.max(0, currentCount - orders.length);
+
+        clearSelection();
+        footerStatus.textContent = `Deleting ${orders.length} turns...`;
+
+        try {
+          await Promise.all(orders.map(to => 
+            fetch('/api/delete-turn', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ turn_order: to })
+            })
+          ));
+          pollUsers();
+          pollTurns();
+          footerStatus.textContent = `✓ ${orders.length} turns deleted`;
+        } catch (e) {
+          console.error('Batch delete failed:', e);
+        }
+      }
+
+      function filterProfiles(query) {
+        const cleanQ = (query || '').trim().toLowerCase();
+        const clearBtn = document.getElementById('btnClearSearchProfiles');
+        if (clearBtn) clearBtn.style.display = cleanQ ? 'flex' : 'none';
+
+        profilesList.querySelectorAll('.profile-card').forEach(card => {
+          const nameEl = card.querySelector('.profile-name');
+          const name = (nameEl ? nameEl.textContent : '').toLowerCase();
+          if (!cleanQ || name.includes(cleanQ)) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      }
+
+      function setupBatchControls() {
+        const deleteBtn = document.getElementById('btnBatchDelete');
+        const selectAllBtn = document.getElementById('btnBatchSelectAll');
+        const cancelBtn = document.getElementById('btnBatchCancel');
+        const searchProfilesInput = document.getElementById('searchProfilesInput');
+        const btnClearSearchProfiles = document.getElementById('btnClearSearchProfiles');
+
+        if (deleteBtn) deleteBtn.addEventListener('click', applyBatchDelete);
+        if (selectAllBtn) selectAllBtn.addEventListener('click', selectAllTurns);
+        if (cancelBtn) cancelBtn.addEventListener('click', clearSelection);
+
+        // Double click anywhere on the card to toggle selection
+        turnsContainer.addEventListener('dblclick', (e) => {
+          const card = e.target.closest('.turn-card');
+          if (!card) return;
+          const to = parseInt(card.id.replace('t-', ''));
+          if (isNaN(to)) return;
+
+          // Only ignore if directly double-clicking the delete button
+          if (e.target.closest('.btn-delete-turn')) return;
+
+          e.preventDefault();
+          if (window.getSelection) window.getSelection().removeAllRanges();
+          toggleCardSelection(to);
+        });
+
+        turnsContainer.addEventListener('click', async (e) => {
+          const card = e.target.closest('.turn-card');
+          if (!card) return;
+          const to = parseInt(card.id.replace('t-', ''));
+          if (isNaN(to)) return;
+
+          // If in Quick Assign Mode
+          if (activeAssignProfile) {
+            if (e.target.closest('.btn-delete-turn') || e.target.closest('.turn-mixed-cb')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            card.classList.remove('flash-assign-success');
+            void card.offsetWidth;
+            card.classList.add('flash-assign-success');
+            footerStatus.textContent = `Assigning Turn #${to} to ${activeAssignProfile}...`;
+            await assignTurn(to, activeAssignProfile);
+            footerStatus.textContent = `✓ Turn #${to} assigned to ${activeAssignProfile}`;
+            return;
+          }
+
+          // Checkbox click always toggles selection
+          if (e.target.closest('.card-select-checkbox')) {
+            e.stopPropagation();
+            toggleCardSelection(to);
+            return;
+          }
+
+          // If in selection mode, clicking anywhere on the card toggles selection
+          if (selectedTurnOrders.size > 0) {
+            if (e.target.closest('.btn-delete-turn') || e.target.closest('.btn-save-turn') || e.target.closest('.turn-mixed-cb')) {
+              return;
+            }
+            e.preventDefault();
+            if (window.getSelection) window.getSelection().removeAllRanges();
+            toggleCardSelection(to);
+          }
+        });
+
+        if (searchProfilesInput) {
+          searchProfilesInput.addEventListener('input', (e) => {
+            filterProfiles(e.target.value);
+          });
+
+          searchProfilesInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && selectedTurnOrders.size > 0) {
+              const cards = Array.from(profilesList.querySelectorAll('.profile-card'));
+              const firstVisibleCard = cards.find(c => c.style.display !== 'none');
+              if (firstVisibleCard) {
+                const nameEl = firstVisibleCard.querySelector('.profile-name');
+                if (nameEl && nameEl.textContent) {
+                  applyBatchAssign(nameEl.textContent);
+                  searchProfilesInput.value = '';
+                  filterProfiles('');
+                }
+              }
+            } else if (e.key === 'Escape') {
+              searchProfilesInput.value = '';
+              filterProfiles('');
+              searchProfilesInput.blur();
+            }
+          });
+        }
+
+        if (btnClearSearchProfiles) {
+          btnClearSearchProfiles.addEventListener('click', () => {
+            if (searchProfilesInput) searchProfilesInput.value = '';
+            filterProfiles('');
+          });
+        }
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            if (activeAssignProfile) {
+              setQuickAssignProfile(null);
+            } else if (selectedTurnOrders.size > 0) {
+              clearSelection();
+            }
+          }
+        });
+      }
+
+      // ── Live Frontend Conversation View (Left Section) ─────────────────────
+      const SPK_COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#06b6d4', '#f97316', '#6366f1'];
+      const frontendSpeakerContainer = document.getElementById('frontendSpeakerContainer');
+      const emptyFrontendState = document.getElementById('emptyFrontendState');
+      const frontendSpkCount = document.getElementById('frontendSpkCount');
+
+      function getSpeakerColor(speakerName) {
+        if (!speakerName) return '#94a3b8';
+        let hash = 0;
+        for (let i = 0; i < speakerName.length; i++) {
+          hash = speakerName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % SPK_COLORS.length;
+        return SPK_COLORS[index];
+      }
+
+      function renderFrontendSpeakerBoxes(turns) {
+        if (!frontendSpeakerContainer) return;
+        if (!turns || turns.length === 0) {
+          if (!emptyFrontendState.parentNode) {
+            frontendSpeakerContainer.innerHTML = '';
+            frontendSpeakerContainer.appendChild(emptyFrontendState);
+          }
+          if (frontendSpkCount) frontendSpkCount.textContent = '0 speakers';
+          return;
+        }
+
+        if (emptyFrontendState.parentNode) emptyFrontendState.remove();
+
+        // Group turns into speaker buckets and track the most recent turn order for each speaker
+        const speakerMap = new Map();
+        turns.forEach(t => {
+          const spk = (t.tagged_as || t.predicted_speaker || `Speaker ${t.speaker_label || '?'}`).trim();
+          if (!speakerMap.has(spk)) {
+            speakerMap.set(spk, { turns: [], latestTurnOrder: 0 });
+          }
+          const entry = speakerMap.get(spk);
+          entry.turns.push(t);
+          if (t.turn_order > entry.latestTurnOrder) {
+            entry.latestTurnOrder = t.turn_order;
+          }
+        });
+
+        // Sort descending: speaker who spoke most recently appears at the very TOP
+        const sortedSpeakers = Array.from(speakerMap.entries()).sort((a, b) => b[1].latestTurnOrder - a[1].latestTurnOrder);
+
+        if (frontendSpkCount) {
+          const count = sortedSpeakers.length;
+          frontendSpkCount.textContent = `${count} speaker${count !== 1 ? 's' : ''}`;
+        }
+
+        const incomingSpeakerKeys = new Set();
+
+        const needsReorder = sortedSpeakers.some(([spkName], idx) => {
+          const safeKey = 'fspk-' + spkName.replace(/[^a-zA-Z0-9_-]/g, '_');
+          const currentChildren = Array.from(frontendSpeakerContainer.children).filter(el => el.classList && el.classList.contains('speaker-box'));
+          return !currentChildren[idx] || currentChildren[idx].id !== safeKey;
+        });
+
+        const performUpdate = () => {
+          sortedSpeakers.forEach(([spkName, { turns: spkTurns }], idx) => {
+            const safeKey = 'fspk-' + spkName.replace(/[^a-zA-Z0-9_-]/g, '_');
+            incomingSpeakerKeys.add(safeKey);
+
+            let box = document.getElementById(safeKey);
+            const color = getSpeakerColor(spkName);
+            const userObj = findUserDetails(spkName);
+            const avatarHtml = renderAvatarHtml(userObj, spkName);
+
+            if (!box) {
+              box = document.createElement('div');
+              box.className = 'speaker-box';
+              box.id = safeKey;
+              box.innerHTML = `
+                <div class="speaker-box-header">
+                  <span class="combobox-item-avatar" style="width:28px;height:28px;font-size:12px;">${avatarHtml}</span>
+                  <span class="spk-name">${escapeHtml(spkName)}</span>
+                  <span class="spk-dot" style="background:${color};"></span>
+                </div>
+                <div class="speaker-box-body"></div>
+              `;
+              frontendSpeakerContainer.appendChild(box);
+            } else {
+              const avatarInner = box.querySelector('.combobox-item-avatar');
+              if (avatarInner) avatarInner.innerHTML = avatarHtml;
+              const nameEl = box.querySelector('.spk-name');
+              if (nameEl && nameEl.textContent !== spkName) nameEl.textContent = spkName;
+            }
+
+            // Dynamically reorder DOM so the most recently active speaker sits at the top
+            const currentChildren = Array.from(frontendSpeakerContainer.children).filter(el => el.classList && el.classList.contains('speaker-box'));
+            if (currentChildren[idx] !== box) {
+              if (idx < currentChildren.length) {
+                frontendSpeakerContainer.insertBefore(box, currentChildren[idx]);
+              } else {
+                frontendSpeakerContainer.appendChild(box);
+              }
+            }
+
+            const bodyEl = box.querySelector('.speaker-box-body');
+            if (bodyEl) {
+              const descendingTurns = [...spkTurns].sort((a, b) => Number(b.turn_order) - Number(a.turn_order));
+              bodyEl.innerHTML = descendingTurns.map(t => `
+                <div class="turn-line" data-turn="${t.turn_order}" title="Turn #${t.turn_order} · Click to reassign">
+                  <span class="turn-line-text">${escapeHtml(t.text || '(empty)')}</span>
+                  <button type="button" class="btn-line-reassign" data-turn="${t.turn_order}" title="Reassign line #${t.turn_order} (One-off fix · Exclude from centroid)">⇄ Assign</button>
+                </div>
+              `).join('');
+
+              bodyEl.querySelectorAll('.turn-line').forEach(line => {
+                const to = parseInt(line.dataset.turn);
+                if (isNaN(to)) return;
+
+                const reassignBtn = line.querySelector('.btn-line-reassign');
+                if (reassignBtn) {
+                  reassignBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (activeAssignProfile) {
+                      line.classList.remove('flash-assign-success');
+                      void line.offsetWidth;
+                      line.classList.add('flash-assign-success');
+                      footerStatus.textContent = `Reassigning Turn #${to} to ${activeAssignProfile}...`;
+                      assignTurn(to, activeAssignProfile, { updateCentroid: false, isMixed: true });
+                    } else {
+                      openLeftPanelSpeakerPicker(to, reassignBtn);
+                    }
+                  });
+                }
+
+                line.addEventListener('click', async (e) => {
+                  if (e.target.closest('.btn-line-reassign')) return;
+
+                  if (activeAssignProfile) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    line.classList.remove('flash-assign-success');
+                    void line.offsetWidth;
+                    line.classList.add('flash-assign-success');
+                    footerStatus.textContent = `Reassigning Turn #${to} to ${activeAssignProfile}...`;
+                    await assignTurn(to, activeAssignProfile, { updateCentroid: false, isMixed: true });
+                    return;
+                  }
+
+                  // If user clicks on the line, open the quick speaker reassign picker
+                  openLeftPanelSpeakerPicker(to, line);
+
+                  // Also highlight matching turn card in middle column
+                  const card = document.getElementById('t-' + to);
+                  if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.style.transition = 'box-shadow 0.2s';
+                    card.style.boxShadow = '0 0 0 3px #6366f1';
+                    setTimeout(() => { card.style.boxShadow = ''; }, 1200);
+                  }
+                });
+              });
+            }
+          });
+        };
+
+        performUpdate();
+
+        // Remove any speaker boxes that no longer have turns or have 0 turn lines
+        Array.from(frontendSpeakerContainer.children).forEach(child => {
+          if (child.id && child.id.startsWith('fspk-')) {
+            const body = child.querySelector('.speaker-box-body');
+            const lines = body ? body.querySelectorAll('.turn-line') : [];
+            if (!incomingSpeakerKeys.has(child.id) || lines.length === 0) {
+              child.remove();
+            }
+          }
+        });
+      }
+
+      // ── Left Panel Floating Speaker Picker Logic ──────────────────────────
+      let currentPickerTurnOrder = null;
+      const leftPanelSpeakerPicker = document.getElementById('leftPanelSpeakerPicker');
+      const leftPanelPickerInput = document.getElementById('leftPanelPickerInput');
+      const leftPanelPickerList = document.getElementById('leftPanelPickerList');
+
+      function openLeftPanelSpeakerPicker(turnOrder, anchorEl) {
+        currentPickerTurnOrder = turnOrder;
+        if (!leftPanelSpeakerPicker || !leftPanelPickerInput) return;
+
+        closeAllComboboxes();
+
+        const rect = anchorEl.getBoundingClientRect();
+        let top = rect.bottom + 4;
+        let left = rect.left;
+
+        const pickerWidth = 270;
+        const pickerHeight = 340;
+        if (left + pickerWidth > window.innerWidth) {
+          left = window.innerWidth - pickerWidth - 16;
+        }
+        if (top + pickerHeight > window.innerHeight) {
+          top = Math.max(10, rect.top - pickerHeight - 4);
+        }
+
+        leftPanelSpeakerPicker.style.top = top + 'px';
+        leftPanelSpeakerPicker.style.left = left + 'px';
+        leftPanelSpeakerPicker.style.display = 'flex';
+
+        leftPanelPickerInput.value = '';
+        renderLeftPanelPickerList('');
+        setTimeout(() => leftPanelPickerInput.focus(), 40);
+      }
+
+      function closeLeftPanelSpeakerPicker() {
+        if (leftPanelSpeakerPicker) {
+          leftPanelSpeakerPicker.style.display = 'none';
+        }
+        currentPickerTurnOrder = null;
+      }
+
+      function renderLeftPanelPickerList(query = '') {
+        if (!leftPanelPickerList) return;
+        const cleanQ = (query || '').trim().toLowerCase();
+
+        let matches = registeredUsers.filter(u => {
+          if (!cleanQ) return true;
+          return (u.name || '').toLowerCase().includes(cleanQ);
+        });
+
+        userNames.forEach(n => {
+          if (!matches.some(u => u.name.toLowerCase() === n.toLowerCase())) {
+            if (!cleanQ || n.toLowerCase().includes(cleanQ)) {
+              matches.push({ name: n, has_voiceprint: false, avatar_b64: null });
+            }
+          }
+        });
+
+        // Also add unique session speaker labels like "Speaker A", "Speaker B" if present
+        const sessionSpeakers = new Set();
+        currentTurnsList.forEach(t => {
+          if (t.speaker_label) sessionSpeakers.add(`Speaker ${t.speaker_label}`);
+        });
+        sessionSpeakers.forEach(spk => {
+          if (!matches.some(u => u.name.toLowerCase() === spk.toLowerCase())) {
+            if (!cleanQ || spk.toLowerCase().includes(cleanQ)) {
+              matches.push({ name: spk, has_voiceprint: false, avatar_b64: null });
+            }
+          }
+        });
+
+        if (cleanQ) {
+          matches.sort((a, b) => {
+            const aStarts = (a.name || '').toLowerCase().startsWith(cleanQ);
+            const bStarts = (b.name || '').toLowerCase().startsWith(cleanQ);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+        }
+
+        let html = '';
+        if (matches.length === 0 && !cleanQ) {
+          html = `<div style="padding:14px;text-align:center;color:#94a3b8;font-size:12px;">No registered speakers.<br>Type name to create & assign.</div>`;
+        } else {
+          matches.forEach((u, idx) => {
+            const name = u.name;
+            const avatarHtml = renderAvatarHtml(u, name);
+            let nameHtml = escapeHtml(name);
+            if (cleanQ) {
+              const regex = new RegExp(`(${cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+              nameHtml = nameHtml.replace(regex, '<mark>$1</mark>');
+            }
+
+            const vpBadge = u.has_voiceprint
+              ? `<span class="combobox-item-badge enrolled">✓ Voiceprint</span>`
+              : ``;
+
+            html += `
+              <div class="left-panel-picker-item ${idx === 0 ? 'active' : ''}" data-name="${escapeHtml(name)}" data-index="${idx}">
+                <span class="left-panel-picker-item-avatar">${avatarHtml}</span>
+                <span class="left-panel-picker-item-name">${nameHtml}</span>
+                ${vpBadge}
+              </div>
+            `;
+          });
+        }
+
+        const exactMatch = matches.some(u => (u.name || '').toLowerCase() === cleanQ);
+        if (cleanQ && !exactMatch) {
+          html += `
+            <div class="left-panel-picker-item-new ${matches.length === 0 ? 'active' : ''}" data-action="new" data-name="${escapeHtml(query.trim())}">
+              <span>➕</span>
+              <span>Assign as <strong>"${escapeHtml(query.trim())}"</strong></span>
+            </div>
+          `;
+        }
+
+        leftPanelPickerList.innerHTML = html;
+      }
+
+      if (leftPanelPickerInput) {
+        leftPanelPickerInput.addEventListener('input', (e) => {
+          renderLeftPanelPickerList(e.target.value);
+        });
+
+        leftPanelPickerInput.addEventListener('keydown', async (e) => {
+          const items = Array.from(leftPanelPickerList.querySelectorAll('.left-panel-picker-item, .left-panel-picker-item-new'));
+          let activeItem = leftPanelPickerList.querySelector('.left-panel-picker-item.active, .left-panel-picker-item-new.active');
+          let activeIdx = activeItem ? items.indexOf(activeItem) : -1;
+
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (activeItem) activeItem.classList.remove('active');
+            activeIdx = (activeIdx + 1) % items.length;
+            if (items[activeIdx]) {
+              items[activeIdx].classList.add('active');
+              items[activeIdx].scrollIntoView({ block: 'nearest' });
+            }
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (activeItem) activeItem.classList.remove('active');
+            activeIdx = (activeIdx - 1 + items.length) % items.length;
+            if (items[activeIdx]) {
+              items[activeIdx].classList.add('active');
+              items[activeIdx].scrollIntoView({ block: 'nearest' });
+            }
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            let targetName = '';
+            if (activeItem && activeItem.dataset.name) {
+              targetName = activeItem.dataset.name;
+            } else if (items.length > 0 && items[0].dataset.name) {
+              targetName = items[0].dataset.name;
+            } else if (leftPanelPickerInput.value.trim()) {
+              targetName = leftPanelPickerInput.value.trim();
+            }
+
+            if (targetName && currentPickerTurnOrder !== null) {
+              const to = currentPickerTurnOrder;
+              closeLeftPanelSpeakerPicker();
+              await assignTurn(to, targetName, { updateCentroid: false, isMixed: true });
+            }
+          } else if (e.key === 'Escape') {
+            closeLeftPanelSpeakerPicker();
+          }
+        });
+      }
+
+      if (leftPanelPickerList) {
+        leftPanelPickerList.addEventListener('click', async (e) => {
+          const item = e.target.closest('.left-panel-picker-item, .left-panel-picker-item-new');
+          if (item && item.dataset.name && currentPickerTurnOrder !== null) {
+            const to = currentPickerTurnOrder;
+            const targetName = item.dataset.name;
+            closeLeftPanelSpeakerPicker();
+            await assignTurn(to, targetName, { updateCentroid: false, isMixed: true });
+          }
+        });
+      }
+
+      // Close floating picker on outside click
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#leftPanelSpeakerPicker') && !e.target.closest('.btn-line-reassign') && !e.target.closest('.turn-line')) {
+          closeLeftPanelSpeakerPicker();
+        }
+      });
 
       // ── Poll Turns (In-Place Updates - ZERO FLICKERING) ────────────────────
       async function pollTurns() {
@@ -1284,6 +3363,8 @@
           if (!resp.ok) return;
           const data = await resp.json();
           const turns = data.turns || [];
+          currentTurnsList = turns;
+          renderFrontendSpeakerBoxes(turns);
           turnsCount.textContent = turns.length;
           const pendingCount = turns.filter(t => !t.tagged_as).length;
           if (pendingCountEl) pendingCountEl.textContent = pendingCount;
@@ -1314,6 +3395,7 @@
 
             const isTagged = !!t.tagged_as;
             const isMixed = !!t.is_mixed;
+            const isSelected = selectedTurnOrders.has(t.turn_order);
             const currentAssignment = t.tagged_as || t.predicted_speaker || '';
 
             let badgeClass = isTagged ? 'tagged' : (t.predicted_speaker ? 'detected' : '');
@@ -1323,20 +3405,19 @@
             if (!card) {
               // Create new turn card
               card = document.createElement('div');
-              card.className = 'turn-card';
+              card.className = 'turn-card' + (isSelected ? ' selected-turn-card' : '');
               card.id = cardId;
               card.innerHTML = `
                 <div class="turn-header">
+                  <span class="card-select-checkbox" title="Click to select/deselect">✓</span>
                   <span class="turn-num">#${t.turn_order}</span>
                   <span class="turn-spk">Speaker ${t.speaker_label}</span>
-                  ${mixedBadgeHtml}
                   <span class="turn-badge ${badgeClass}">${escapeHtml(badgeText)}</span>
+                  ${mixedBadgeHtml}
                 </div>
                 <div class="turn-text">${escapeHtml(t.text || '(empty)')}</div>
                 <div class="turn-controls">
-                  <select class="turn-select" data-turn="${t.turn_order}">
-                    ${buildSelectOptions(currentAssignment)}
-                  </select>
+                  ${buildComboboxHtml(t.turn_order, currentAssignment)}
                   <button class="btn-sm btn-save-turn" data-turn="${t.turn_order}">Save</button>
                   <label class="turn-mixed-label" title="Mixed audio / cross-talk: Exclude from voiceprint centroid">
                     <input type="checkbox" class="turn-mixed-cb" data-turn="${t.turn_order}" ${isMixed ? 'checked' : ''}>
@@ -1354,10 +3435,18 @@
                 turnsContainer.appendChild(card);
               }
 
-              // Bind event listeners once on creation
+              // Bind combobox and button event listeners
+              const combobox = card.querySelector('.combobox-container');
+              if (combobox) bindComboboxEvents(combobox, t.turn_order);
               bindCardEvents(card, t.turn_order);
             } else {
               // Card already exists — update in-place smoothly
+              if (isSelected && !card.classList.contains('selected-turn-card')) {
+                card.classList.add('selected-turn-card');
+              } else if (!isSelected && card.classList.contains('selected-turn-card')) {
+                card.classList.remove('selected-turn-card');
+              }
+
               const badgeEl = card.querySelector('.turn-badge:not(.mixed)');
               if (badgeEl && badgeEl.textContent !== badgeText) {
                 badgeEl.className = 'turn-badge ' + badgeClass;
@@ -1372,17 +3461,21 @@
                 temp.className = 'turn-badge mixed';
                 temp.title = 'Excluded from voiceprint centroids';
                 temp.textContent = '⚠️ Mixed';
-                header.insertBefore(temp, header.querySelector('.turn-badge:not(.mixed)'));
+                header.appendChild(temp);
               } else if (!isMixed && mixedBadge) {
                 mixedBadge.remove();
               }
 
-              const selectEl = card.querySelector('.turn-select');
-              if (selectEl && document.activeElement !== selectEl) {
-                const currentHtml = buildSelectOptions(currentAssignment);
-                if (selectEl.dataset.cachedHtml !== currentHtml) {
-                  selectEl.innerHTML = currentHtml;
-                  selectEl.dataset.cachedHtml = currentHtml;
+              // Update combobox state without stealing user focus
+              const combobox = card.querySelector('.combobox-container');
+              if (combobox) {
+                const input = combobox.querySelector('.combobox-input');
+                if (input && document.activeElement !== input && !combobox.classList.contains('open')) {
+                  if (input.dataset.savedVal !== currentAssignment) {
+                    input.value = currentAssignment;
+                    input.dataset.savedVal = currentAssignment;
+                    updateComboboxAvatar(combobox, currentAssignment);
+                  }
                 }
               }
 
@@ -1398,41 +3491,21 @@
         } catch (e) {}
       }
 
-      function buildSelectOptions(selectedName) {
-        let opts = `<option value="">-- Assign Voice Tag --</option>`;
-        userNames.forEach(name => {
-          const isSel = (selectedName || '').toLowerCase() === name.toLowerCase();
-          opts += `<option value="${escapeHtml(name)}" ${isSel ? 'selected' : ''}>${escapeHtml(name)}</option>`;
-        });
-        opts += `<option value="__NEW__">➕ Create New User...</option>`;
-        return opts;
-      }
-
       function bindCardEvents(card, turnOrder) {
-        const select = card.querySelector('.turn-select');
         const saveBtn = card.querySelector('.btn-save-turn');
         const deleteBtn = card.querySelector('.btn-delete-turn');
         const mixedCb = card.querySelector('.turn-mixed-cb');
 
-        if (select) {
-          select.addEventListener('change', async () => {
-            if (select.value === '__NEW__') {
-              const newName = prompt('Enter new user name:');
-              if (newName && newName.trim()) {
-                await assignTurn(turnOrder, newName.trim());
-              } else {
-                select.value = '';
-              }
-            } else if (select.value) {
-              await assignTurn(turnOrder, select.value);
-            }
-          });
-        }
-
         if (saveBtn) {
           saveBtn.addEventListener('click', async () => {
-            if (select && select.value && select.value !== '__NEW__') {
-              await assignTurn(turnOrder, select.value);
+            const container = card.querySelector('.combobox-container');
+            const input = container ? container.querySelector('.combobox-input') : null;
+            if (input && input.value.trim()) {
+              const val = input.value.trim();
+              input.dataset.savedVal = val;
+              updateComboboxAvatar(container, val);
+              closeAllComboboxes();
+              await assignTurn(turnOrder, val);
             }
           });
         }
@@ -1452,8 +3525,15 @@
         }
       }
 
-      async function assignTurn(turnOrder, name) {
-        // Optimistic instant UI update (0ms delay)
+      async function assignTurn(turnOrder, name, options) {
+        if (turnOrder === 'batch') {
+          return applyBatchAssign(name);
+        }
+        options = options || {};
+        const updateCentroid = options.updateCentroid !== false;
+        const isMixed = options.isMixed === true || !updateCentroid;
+
+        // 1. Optimistic instant UI update in middle column (0ms delay)
         const card = document.getElementById('t-' + turnOrder);
         if (card) {
           const badgeEl = card.querySelector('.turn-badge:not(.mixed)');
@@ -1461,12 +3541,53 @@
             badgeEl.className = 'turn-badge tagged';
             badgeEl.textContent = `✓ Tagged: ${name}`;
           }
+          if (isMixed) {
+            let mixedBadge = card.querySelector('.turn-badge.mixed');
+            if (!mixedBadge) {
+              const header = card.querySelector('.turn-header');
+              const temp = document.createElement('span');
+              temp.className = 'turn-badge mixed';
+              temp.title = 'Excluded from voiceprint centroids';
+              temp.textContent = '⚠️ Mixed';
+              header.insertBefore(temp, header.querySelector('.turn-badge:not(.mixed)'));
+            }
+            const mixedCb = card.querySelector('.turn-mixed-cb');
+            if (mixedCb) mixedCb.checked = true;
+          }
+          const input = card.querySelector('.combobox-input');
+          if (input) {
+            input.value = name;
+            input.dataset.savedVal = name;
+            const combobox = card.querySelector('.combobox-container');
+            if (combobox) updateComboboxAvatar(combobox, name);
+          }
         }
+
+        // 2. Optimistic instant UI update in left column (0ms delay)
+        if (currentTurnsList) {
+          const found = currentTurnsList.find(t => t.turn_order === turnOrder);
+          if (found) {
+            found.tagged_as = name;
+            found.is_mixed = isMixed;
+          }
+          renderFrontendSpeakerBoxes(currentTurnsList);
+        }
+
+        footerStatus.textContent = !updateCentroid
+          ? `✓ Line #${turnOrder} reassigned to ${name} (One-off fix: excluded from centroid, other lines untouched)`
+          : `✓ Turn #${turnOrder} assigned to ${name}`;
+
         try {
           const resp = await fetch('/api/tag-turn-from-admin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ turn_order: turnOrder, speaker_name: name })
+            body: JSON.stringify({
+              turn_order: turnOrder,
+              speaker_name: name,
+              update_centroid: updateCentroid,
+              is_mixed: isMixed,
+              recalculate_predictions: updateCentroid
+            })
           });
           if (resp.ok) {
             pollUsers();
@@ -1643,6 +3764,9 @@
       pollUsers();
       pollTurns();
       setupEventSource();
+      setupBatchControls();
+      const speakerFilterCombobox = document.getElementById('speakerFilterCombobox');
+      if (speakerFilterCombobox) bindComboboxEvents(speakerFilterCombobox, null);
     })();
   </script>
 </body>

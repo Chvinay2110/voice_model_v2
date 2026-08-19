@@ -64,7 +64,9 @@ def init_profiles_from_db():
         _profiles[name] = {
             "embeddings": [centroid_tensor] if centroid_tensor is not None else [],
             "centroid": centroid_tensor,
+            "enrolled_centroid": centroid_tensor,
             "avatar_b64": p.get("avatar_b64"),
+            "company_name": p.get("company_name") or "",
         }
     log.info("Loaded %d profiles from SQLite database.", len(_profiles))
 
@@ -85,7 +87,7 @@ def extract_embedding(pcm_float32_16k: np.ndarray) -> torch.Tensor:
     return emb
 
 
-def create_user(speaker_name: str, avatar_b64: Optional[str] = None) -> dict:
+def create_user(speaker_name: str, avatar_b64: Optional[str] = None, company_name: Optional[str] = None) -> dict:
     """Create or update a user profile with optional avatar image."""
     name = speaker_name.strip()
     if not name:
@@ -94,17 +96,22 @@ def create_user(speaker_name: str, avatar_b64: Optional[str] = None) -> dict:
         _profiles[name] = {
             "embeddings": [],
             "centroid": None,
+            "enrolled_centroid": None,
             "avatar_b64": avatar_b64,
+            "company_name": (company_name or "").strip(),
         }
         log.info("Created user profile: '%s'", name)
     elif avatar_b64:
         _profiles[name]["avatar_b64"] = avatar_b64
+    if company_name is not None:
+        _profiles[name]["company_name"] = company_name.strip()
 
     # Save to SQLite
     centroid_list = _profiles[name]["centroid"].tolist() if _profiles[name]["centroid"] is not None else None
     db.upsert_profile(
         name=name,
         avatar_b64=_profiles[name].get("avatar_b64"),
+        company_name=_profiles[name].get("company_name"),
         samples_count=len(_profiles[name]["embeddings"]),
         centroid_list=centroid_list,
     )
@@ -114,6 +121,7 @@ def create_user(speaker_name: str, avatar_b64: Optional[str] = None) -> dict:
         "samples_count": len(_profiles[name]["embeddings"]),
         "has_voiceprint": _profiles[name]["centroid"] is not None,
         "avatar_b64": _profiles[name].get("avatar_b64"),
+        "company_name": _profiles[name].get("company_name", ""),
     }
 
 
@@ -130,6 +138,7 @@ def set_user_avatar(speaker_name: str, avatar_b64: str) -> dict:
         db.upsert_profile(
             name=name,
             avatar_b64=avatar_b64,
+            company_name=_profiles[name].get("company_name"),
             samples_count=len(_profiles[name]["embeddings"]),
             centroid_list=centroid_list,
         )
@@ -148,11 +157,15 @@ def delete_user(speaker_name: str) -> dict:
 
 def sync_all_user_centroids(speaker_to_embeddings: Dict[str, List[torch.Tensor]]):
     """Rebuild all user centroids from the provided turn embedding collections."""
+    lower_grouped = {k.lower().strip(): v for k, v in speaker_to_embeddings.items()}
     for name in list(_profiles.keys()):
-        if name in speaker_to_embeddings and speaker_to_embeddings[name]:
-            embs = speaker_to_embeddings[name]
-            _profiles[name]["embeddings"] = embs
-            stacked = torch.stack(embs, dim=0)
+        enrolled = _profiles[name].get("enrolled_centroid")
+        embs = lower_grouped.get(name.lower().strip(), [])
+        all_embs = [enrolled] + embs if enrolled is not None else embs
+
+        if all_embs:
+            _profiles[name]["embeddings"] = all_embs
+            stacked = torch.stack(all_embs, dim=0)
             mean_emb = torch.mean(stacked, dim=0)
             _profiles[name]["centroid"] = F.normalize(mean_emb, p=2, dim=-1)
         else:
@@ -163,6 +176,7 @@ def sync_all_user_centroids(speaker_to_embeddings: Dict[str, List[torch.Tensor]]
         db.upsert_profile(
             name=name,
             avatar_b64=_profiles[name].get("avatar_b64"),
+            company_name=_profiles[name].get("company_name"),
             samples_count=len(_profiles[name]["embeddings"]),
             centroid_list=centroid_list,
         )
@@ -178,6 +192,7 @@ def sync_all_user_centroids(speaker_to_embeddings: Dict[str, List[torch.Tensor]]
                 db.upsert_profile(
                     name=name,
                     avatar_b64=_profiles[name].get("avatar_b64"),
+                    company_name=_profiles[name].get("company_name"),
                     samples_count=len(_profiles[name]["embeddings"]),
                     centroid_list=_profiles[name]["centroid"].tolist(),
                 )
@@ -188,19 +203,27 @@ def update_user_centroid(name: str, embeddings: list):
     if name not in _profiles:
         return
 
+    enrolled = _profiles[name].get("enrolled_centroid")
+
     if embeddings:
-        _profiles[name]["embeddings"] = embeddings
-        stacked = torch.stack(embeddings, dim=0)
+        all_embs = [enrolled] + embeddings if enrolled is not None else embeddings
+        _profiles[name]["embeddings"] = all_embs
+        stacked = torch.stack(all_embs, dim=0)
         mean_emb = torch.mean(stacked, dim=0)
         _profiles[name]["centroid"] = F.normalize(mean_emb, p=2, dim=-1)
     else:
-        _profiles[name]["embeddings"] = []
-        _profiles[name]["centroid"] = None
+        if enrolled is not None:
+            _profiles[name]["embeddings"] = [enrolled]
+            _profiles[name]["centroid"] = enrolled
+        else:
+            _profiles[name]["embeddings"] = []
+            _profiles[name]["centroid"] = None
 
     centroid_list = _profiles[name]["centroid"].tolist() if _profiles[name]["centroid"] is not None else None
     db.upsert_profile(
         name=name,
         avatar_b64=_profiles[name].get("avatar_b64"),
+        company_name=_profiles[name].get("company_name"),
         samples_count=len(_profiles[name]["embeddings"]),
         centroid_list=centroid_list,
     )
@@ -228,6 +251,7 @@ def enroll_user_long_audio(speaker_name: str, pcm_float32_16k: np.ndarray) -> di
     db.upsert_profile(
         name=name,
         avatar_b64=_profiles[name].get("avatar_b64"),
+        company_name=_profiles[name].get("company_name"),
         samples_count=1,
         centroid_list=centroid.tolist(),
     )
@@ -290,6 +314,7 @@ def get_users_detailed() -> List[dict]:
             "samples_count": len(data["embeddings"]),
             "has_voiceprint": data["centroid"] is not None,
             "avatar_b64": data.get("avatar_b64"),
+            "company_name": data.get("company_name", ""),
         })
     return result
 

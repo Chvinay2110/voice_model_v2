@@ -619,10 +619,13 @@ def api_create_user():
     data = request.get_json(force=True) or {}
     name = (data.get("name") or "").strip()
     avatar_b64 = data.get("avatar_b64")
+    company_name = data.get("company_name")
+    if company_name is not None:
+        company_name = str(company_name).strip()
     if not name:
         return jsonify({"error": "User name is required."}), 400
     try:
-        res = speaker_id_engine.create_user(name, avatar_b64=avatar_b64)
+        res = speaker_id_engine.create_user(name, avatar_b64=avatar_b64, company_name=company_name)
         broadcast_sse("users_updated", res)
         return jsonify(res)
     except Exception as exc:
@@ -744,6 +747,7 @@ def _decode_pcm_base64(b64_str):
 
 
 def _rebuild_all_centroids():
+    canonical_names = {k.lower().strip(): k for k in speaker_id_engine._profiles.keys()}
     grouped = {}
     fallback_grouped = {}
 
@@ -752,22 +756,22 @@ def _rebuild_all_centroids():
             continue  # Exclude mixed / contaminated audio from all centroids
 
         speaker = (entry.get("tagged_as") or "").strip()
+        if not speaker:
+            continue
+        canon_name = canonical_names.get(speaker.lower(), speaker)
         emb = entry.get("embedding")
-        if speaker and emb is not None:
-            audio_b64 = entry.get("audio_b64") or ""
-            # Calculate PCM length in seconds
-            pcm_len = len(audio_b64) * 3 // 4 // 2 if audio_b64 else 0
-            duration_s = pcm_len / 16000.0 if pcm_len > 0 else 1.0
+        if emb is not None:
+            duration_s = entry.get("duration_s", 1.0)
 
-            if speaker not in fallback_grouped:
-                fallback_grouped[speaker] = []
-            fallback_grouped[speaker].append(emb)
+            if canon_name not in fallback_grouped:
+                fallback_grouped[canon_name] = []
+            fallback_grouped[canon_name].append(emb)
 
             # Combined into centroid only if >= 1.0s audio
             if duration_s >= 1.0:
-                if speaker not in grouped:
-                    grouped[speaker] = []
-                grouped[speaker].append(emb)
+                if canon_name not in grouped:
+                    grouped[canon_name] = []
+                grouped[canon_name].append(emb)
 
     # Fallback to shorter sample if a user has no >= 1.0s samples yet
     for spk, embs in fallback_grouped.items():
@@ -794,9 +798,7 @@ def _update_single_user_centroid(speaker_name):
             emb = entry.get("embedding")
             if emb is not None:
                 fallback_embeddings.append(emb)
-                audio_b64 = entry.get("audio_b64") or ""
-                pcm_len = len(audio_b64) * 3 // 4 // 2 if audio_b64 else 0
-                duration_s = pcm_len / 16000.0 if pcm_len > 0 else 1.0
+                duration_s = entry.get("duration_s", 1.0)
                 if duration_s >= 1.0:
                     embeddings.append(emb)
 
@@ -905,6 +907,8 @@ def _process_turn_embedding_async(turn_order, audio_b64):
 
         if entry:
             entry["embedding"] = emb
+            entry["duration_s"] = duration_s
+            entry["audio_b64"] = None
             entry["predicted_speaker"] = predicted_speaker
             entry["predicted_confidence"] = predicted_confidence
             entry["scores"] = scores
@@ -925,7 +929,7 @@ def _process_turn_embedding_async(turn_order, audio_b64):
                     turn_order=turn_order,
                     text=entry["text"],
                     speaker_label=entry["speaker_label"],
-                    audio_b64=audio_b64,
+                    audio_b64=None,
                     tagged_as=entry.get("tagged_as"),
                     predicted_speaker=predicted_speaker,
                     predicted_confidence=predicted_confidence,
@@ -954,20 +958,21 @@ def api_store_turn_audio():
     text = data.get("text", "")
     speaker_label = data.get("speaker_label", "A")
 
-    # 1. Instant SQLite write in <1ms
+    # 1. Instant SQLite write in <1ms without storing audio
     db.upsert_turn(
         turn_order=turn_order,
         text=text,
         speaker_label=speaker_label,
-        audio_b64=audio_b64 if audio_b64 else None,
+        audio_b64=None,
         tagged_as=None,
         predicted_speaker=None,
         predicted_confidence=0.0,
     )
 
     turn_store[turn_order] = {
-        "audio_b64": audio_b64,
+        "audio_b64": None,
         "embedding": None,
+        "duration_s": 1.0,
         "text": text,
         "speaker_label": speaker_label,
         "predicted_speaker": None,
@@ -975,11 +980,6 @@ def api_store_turn_audio():
         "scores": {},
         "tagged_as": None,
     }
-
-    if len(turn_store) > 200:
-        oldest = sorted(turn_store.keys())[: len(turn_store) - 200]
-        for k in oldest:
-            del turn_store[k]
 
     # 2. Instant Real-time Push to Admin Panel
     broadcast_sse("turn_update", {"turn_order": turn_order, "text": text, "tagged_as": None})
@@ -1021,6 +1021,10 @@ def api_tag_turn_from_admin():
     data = request.get_json(force=True) or {}
     turn_order = data.get("turn_order")
     speaker_name = (data.get("speaker_name") or "").strip()
+    update_centroid = bool(data.get("update_centroid", True))
+    set_mixed = data.get("is_mixed")
+    recalculate_predictions = bool(data.get("recalculate_predictions", update_centroid))
+
     if turn_order is None or not speaker_name:
         return jsonify({"error": "turn_order and speaker_name required"}), 400
 
@@ -1029,12 +1033,18 @@ def api_tag_turn_from_admin():
     if not entry:
         db_turn = db.get_turn(turn_order)
         if db_turn:
+            emb = None
+            if db_turn.get("embedding_json"):
+                try:
+                    emb = torch.tensor(json.loads(db_turn["embedding_json"]), dtype=torch.float32)
+                except Exception:
+                    pass
             entry = {
                 "audio_b64": db_turn.get("audio_b64"),
-                "embedding": None,
+                "embedding": emb,
                 "text": db_turn.get("text", ""),
                 "speaker_label": db_turn.get("speaker_label", "A"),
-                "tagged_as": None,
+                "tagged_as": db_turn.get("tagged_as"),
                 "is_mixed": bool(db_turn.get("is_mixed", 0)),
             }
             turn_store[turn_order] = entry
@@ -1051,15 +1061,39 @@ def api_tag_turn_from_admin():
 
     old_speaker = (entry.get("tagged_as") or "").strip()
     entry["tagged_as"] = speaker_name
+
+    # If update_centroid is False or is_mixed is True, mark this turn as mixed/isolated
+    if not update_centroid or set_mixed is True:
+        entry["is_mixed"] = True
+        db.update_turn_mixed(turn_order, 1)
+        broadcast_sse("turn_mixed_updated", {"turn_order": turn_order, "is_mixed": True})
+    elif set_mixed is False:
+        entry["is_mixed"] = False
+        db.update_turn_mixed(turn_order, 0)
+        broadcast_sse("turn_mixed_updated", {"turn_order": turn_order, "is_mixed": False})
+
     db.update_turn_tag(turn_order, speaker_name)
 
     # 1. INSTANT sub-millisecond SSE broadcast to all connected UIs
-    broadcast_sse("tag_updated", {"turn_order": turn_order, "tagged_as": speaker_name})
+    broadcast_sse("tag_updated", {
+        "turn_order": turn_order,
+        "tagged_as": speaker_name,
+        "is_mixed": entry.get("is_mixed", False)
+    })
     broadcast_sse("turns_updated", {"turn_order": turn_order})
 
     # 2. Async background centroid & prediction update
     def _async_update_centroids():
         try:
+            if not update_centroid:
+                # One-off isolated fix:
+                # Unconditionally rebuild all centroids so this turn is excluded from ALL centroids,
+                # immediately removing it from whichever previous speaker's voiceprint it was in.
+                _rebuild_all_centroids()
+                broadcast_sse("users_updated", {})
+                broadcast_sse("turns_updated", {})
+                return
+
             if entry.get("embedding") is None and entry.get("audio_b64"):
                 pcm = _decode_pcm_base64(entry["audio_b64"])
                 if len(pcm) >= int(0.3 * 16000):
@@ -1067,14 +1101,14 @@ def api_tag_turn_from_admin():
                     entry["embedding"] = emb
                     db.update_turn_embedding(turn_order, json.dumps(emb.tolist()))
 
-            if entry.get("embedding") is not None:
-                _update_single_user_centroid(speaker_name)
-                if old_speaker and old_speaker.lower() != speaker_name.lower():
-                    _update_single_user_centroid(old_speaker)
+            # Rebuild all centroids so target speaker gets the sample and previous speaker loses it
+            _rebuild_all_centroids()
+            if recalculate_predictions:
                 _recalculate_turn_predictions()
-                broadcast_sse("users_updated", {})
-        except Exception:
-            pass
+            broadcast_sse("users_updated", {})
+            broadcast_sse("turns_updated", {})
+        except Exception as e:
+            log.error("Error in _async_update_centroids: %s", e)
 
     _bg_pool.submit(_async_update_centroids)
 
@@ -1082,6 +1116,8 @@ def api_tag_turn_from_admin():
         "status": "tagged",
         "turn_order": turn_order,
         "speaker_name": speaker_name,
+        "is_mixed": entry.get("is_mixed", False),
+        "update_centroid": update_centroid,
     })
 
 

@@ -101,6 +101,36 @@
       flex-wrap: wrap;
     }
 
+    .brand-logo {
+      display: inline-flex;
+      align-items: baseline;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .brand-logo .logo-dee {
+      color: #0f172a;
+    }
+
+    .brand-logo .logo-bug {
+      color: #2563eb;
+    }
+
+    .brand-logo .logo-tag {
+      color: #881337;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      font-size: 0.62em;
+      font-weight: 800;
+      margin-left: 2px;
+      vertical-align: top;
+      position: relative;
+      top: -0.32em;
+      letter-spacing: -0.04em;
+    }
+
     .header-title {
       font-size: 16px;
       font-weight: 700;
@@ -146,7 +176,36 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      flex-wrap: wrap;
+    }
+
+    .btn-ai-toggle {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: 9px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: all .15s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .btn-ai-toggle:hover {
+      background: #eef2ff;
+      border-color: #a5b4fc;
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
+    }
+    .btn-ai-toggle.active,
+    #app-page.sidebar-open .btn-ai-toggle {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22);
     }
 
     .btn {
@@ -671,62 +730,86 @@
       border: 1px solid var(--border);
       overflow: hidden;
       flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      max-height: 300px;
-      animation: slideIn .25s ease;
+      display: grid;
+      grid-template-columns: 25% 75%;
+      height: 300px;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
     }
 
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-
-      to {
-        opacity: 1;
-        transform: none;
-      }
+    .speaker-box.speaker-box-active-glow {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2.5px rgba(99, 102, 241, 0.35), 0 4px 16px rgba(99, 102, 241, 0.1) !important;
     }
 
     .speaker-box-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 18px;
-      border-bottom: 1px solid var(--border);
+      grid-column: 1;
+      min-width: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      padding: 0;
+      border-right: 1px solid var(--border);
       background: #fafafa;
-      flex-shrink: 0;
+      overflow: hidden;
     }
 
     .spk-avatar-img {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border-radius: 0;
       object-fit: cover;
-      border: 2px solid #ffffff;
-      outline: 1.5px solid var(--border);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
-      flex-shrink: 0;
-      vertical-align: middle;
       transition: transform .15s ease;
     }
+
+    .spk-avatar-placeholder {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      border-radius: 0;
+      display: grid;
+      place-items: center;
+      background: #e0e7ff;
+      color: var(--accent);
+      font-size: 32px;
+      font-weight: 800;
+    }
+
     .spk-avatar-img:hover {
       transform: scale(1.08);
+    }
+
+    .spk-identity {
+      width: 100%;
+      padding: 12px 10px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--surface);
+    }
+
+    .spk-identity-text {
+      min-width: 0;
     }
 
     .spk-name {
       font-size: 16px;
       font-weight: 700;
       color: var(--text);
-      cursor: pointer;
       border-radius: 6px;
-      padding: 3px 6px;
-      transition: background .12s;
+      padding: 3px 0;
+      text-align: center;
+      overflow-wrap: anywhere;
     }
 
-    .spk-name:hover {
-      background: var(--bg);
+    .spk-company {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+      text-align: center;
+      overflow-wrap: anywhere;
     }
 
     .spk-dot {
@@ -743,17 +826,18 @@
     }
 
     .speaker-box-body {
+      grid-column: 2;
+      min-width: 0;
       padding: 14px 20px 18px;
       display: flex;
       flex-direction: column;
       gap: 8px;
       flex: 1;
-      min-height: 80px;
-      max-height: 240px;
+      min-height: 0;
+      max-height: none;
       overflow-y: auto;
-      scroll-behavior: smooth;
+      scroll-behavior: auto;
       scroll-padding-bottom: 16px;
-      /* custom thin scrollbar */
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
     }
@@ -778,17 +862,6 @@
       color: var(--text);
       padding: 4px 0;
       margin-bottom: 2px;
-      animation: fadeIn .18s ease;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-
-      to {
-        opacity: 1;
-      }
     }
 
     .turn-line.interim {
@@ -796,7 +869,7 @@
     }
 
     .turn-line.interim::after {
-      content: '▋';
+      content: '|';
       animation: blink .8s step-end infinite;
       margin-left: 2px;
     }
@@ -839,7 +912,7 @@
   <!-- ── HOME PAGE ── -->
   <div id="home-page">
     <div class="home-card">
-      <h1>DEEBUG Live Transcribe</h1>
+      <h1><span class="brand-logo"><span class="logo-dee">dee</span><span class="logo-bug">bug</span><sup class="logo-tag">&lt;/&gt;</sup></span> Live Transcribe</h1>
       <button id="startBtn">Start Recording</button>
     </div>
   </div>
@@ -847,13 +920,15 @@
   <!-- ── APP PAGE ── -->
   <div id="app-page">
     <header>
-      <span class="header-title">DEEBUG</span>
+      <span class="header-title"><span class="brand-logo"><span class="logo-dee">dee</span><span class="logo-bug">bug</span><sup class="logo-tag">&lt;/&gt;</sup></span></span>
       <button class="btn lang-btn" id="btnEnglish">English</button>
       <button class="btn lang-btn" id="btnHindi">Hindi</button>
       <div class="header-actions">
-        <button class="btn" id="downloadBtn">⬇ Download</button>
-        <button class="btn btn-transcribe-toggle running" id="btnToggleTranscribe">Stop Transcribing</button>
-        <button class="btn" id="aiAnalysisBtn">AI Analysis</button>
+        <button class="btn-ai-toggle" id="aiAnalysisBtn" title="Toggle AI Speaker Intelligence & Analysis">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -863,7 +938,7 @@
         <div id="speakerContainer">
           <div class="empty-state" id="emptyState">
             <div class="icon">🎙</div>
-            Listening for speech…<br>
+            Listening for speech...<br>
             Speaker boxes will appear here as people are detected.
           </div>
         </div>
@@ -890,14 +965,12 @@
     </div>
   </div>
 
-
   <!-- ── AI ANALYSIS SIDEBAR ── -->
   <div id="aiSidebar">
     <div class="sb-header">
       <span class="sb-title"><span class="sb-pulse-dot"></span> Speaker Intelligence</span>
-      <button class="sb-close" id="sbClose">×</button>
+      <button class="sb-close" id="sbClose">&times;</button>
     </div>
-
     <div class="sb-body" id="sbBody"></div>
   </div>
 
@@ -915,7 +988,7 @@
       const appPage = document.getElementById('app-page');
       const startBtn = document.getElementById('startBtn');
       const btnToggleTranscribe = document.getElementById('btnToggleTranscribe');
-      const downloadBtn = document.getElementById('downloadBtn');
+      const downloadBtn = document.getElementById('downloadBtn') || { addEventListener: () => {} };
       const speakerContainer = document.getElementById('speakerContainer');
       const emptyState = document.getElementById('emptyState');
       const interimBar = document.getElementById('interimBar');
@@ -1001,7 +1074,7 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 350 },
+            animation: false,
             plugins: {
               legend: { display: false },
               tooltip: {
@@ -1040,38 +1113,45 @@
         initSpeakingChart();
         if (!chartInstance) return;
 
-        const spkDurations = {};
+        const nameDurations = {};
         for (const turn of Object.values(fTurns)) {
           if (!turn || !turn.speakerId) continue;
-          const sid = String(turn.speakerId).trim().toUpperCase();
-          if (sid === '?' || sid === 'PENDING' || sid.startsWith('PENDING')) continue;
-          const sName = speakerName(turn.speakerId).trim().toLowerCase();
-          if (sName === 'pending' || sName.includes('pending') || sName.includes('?')) continue;
-          spkDurations[turn.speakerId] = (spkDurations[turn.speakerId] || 0) + (turn.duration || 1);
+          const sName = speakerName(turn.speakerId).trim();
+          if (!sName || sName.toLowerCase() === 'pending' || sName.includes('?')) continue;
+          nameDurations[sName] = (nameDurations[sName] || 0) + (turn.duration || 1);
         }
 
-        const speakerIds = Object.keys(spkDurations);
-        if (speakerIds.length === 0) {
+        const speakerNames = Object.keys(nameDurations);
+        if (speakerNames.length === 0) {
+          const alreadyEmpty = chartInstance.data.labels.length === 0;
           chartInstance.data.labels = [];
           chartInstance.data.datasets[0].data = [];
           chartInstance.data.datasets[0].backgroundColor = [];
-          chartInstance.update();
+          if (!alreadyEmpty) chartInstance.update('none');
           return;
         }
 
-        const totalDur = speakerIds.reduce((sum, sid) => sum + spkDurations[sid], 0) || 1;
+        const totalDur = speakerNames.reduce((sum, name) => sum + nameDurations[name], 0) || 1;
 
         // Sort by duration descending
-        speakerIds.sort((a, b) => spkDurations[b] - spkDurations[a]);
+        speakerNames.sort((a, b) => nameDurations[b] - nameDurations[a]);
 
-        const labels = speakerIds.map(sid => speakerName(sid));
-        const data = speakerIds.map(sid => Math.round((spkDurations[sid] / totalDur) * 100));
-        const colors = speakerIds.map(sid => (speakerBoxes[sid] ? speakerBoxes[sid].color : getSpeakerColor(sid)));
+        const labels = speakerNames;
+        const data = speakerNames.map(name => Math.round((nameDurations[name] / totalDur) * 100));
+        const colors = speakerNames.map((name, idx) => {
+          const box = getOrCreateSpeakerBox(name);
+          return (box && box.color) || SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
+        });
 
-        chartInstance.data.labels = labels;
-        chartInstance.data.datasets[0].data = data;
-        chartInstance.data.datasets[0].backgroundColor = colors;
-        chartInstance.update();
+        const unchanged = JSON.stringify(chartInstance.data.labels) === JSON.stringify(labels)
+          && JSON.stringify(chartInstance.data.datasets[0].data) === JSON.stringify(data)
+          && JSON.stringify(chartInstance.data.datasets[0].backgroundColor) === JSON.stringify(colors);
+        if (!unchanged) {
+          chartInstance.data.labels = labels;
+          chartInstance.data.datasets[0].data = data;
+          chartInstance.data.datasets[0].backgroundColor = colors;
+          chartInstance.update('none');
+        }
       }
 
       // ── Phonetic Devanagari to Roman (Hinglish) Transliterator ───────────
@@ -1156,6 +1236,7 @@
 
         if (viewMode === 'en' && en) turnEl.textContent = en;
         else if (viewMode === 'hi' && hi) turnEl.textContent = hi;
+        scrollBoxToBottom(turnEl.parentElement);
       }
 
       // Re-renders every finalized turn line for the current viewMode.
@@ -1166,79 +1247,115 @@
           if (viewMode === 'en') el.textContent = el.dataset.en || orig;
           else if (viewMode === 'hi') el.textContent = el.dataset.hi || orig;
           else el.textContent = orig;
+          scrollBoxToBottom(el.parentElement);
         });
       }
 
       // ── Speaker box management ────────────────────────────────────────────
-      function getOrCreateSpeakerBox(speakerId) {
-        if (speakerBoxes[speakerId]) return speakerBoxes[speakerId];
-        // hide empty state
+      const sessionClusterMap = {};
+
+      function bringSpeakerBoxToTop(boxEl) {
+        if (!boxEl || !speakerContainer) return;
+        if (speakerContainer.firstElementChild !== boxEl) {
+          speakerContainer.insertBefore(boxEl, speakerContainer.firstElementChild);
+        }
+      }
+
+      function getOrCreateSpeakerBox(speakerName) {
+        if (!speakerName) speakerName = 'A';
+        // Normalize name: e.g. "vinay" or "Vinay" or "Speaker A"
+        let normName = speakerName.trim();
+        if (normName.startsWith('USR_')) {
+          normName = normName.replace(/^USR_/, '').replace(/_/g, ' ');
+        }
+        if (/^[A-Z0-9]$/i.test(normName)) {
+          if (sessionClusterMap[normName]) {
+            normName = sessionClusterMap[normName];
+          } else {
+            normName = 'Speaker ' + normName.toUpperCase();
+          }
+        }
+
+        // Match against registered users
+        const foundUser = registeredUsers.find(u => (u.name || '').toLowerCase() === normName.toLowerCase());
+        if (foundUser && foundUser.name) {
+          normName = foundUser.name;
+        }
+
+        const customId = 'spk_' + normName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+        if (speakerBoxes[customId]) {
+          return speakerBoxes[customId];
+        }
+
         if (emptyState && emptyState.parentNode) emptyState.remove();
 
         const idx = Object.keys(speakerBoxes).length;
         const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
-        
-        let displayName = speakerId;
-        if (/^[A-Z0-9]$/i.test(speakerId)) {
-          displayName = 'Speaker ' + speakerId;
-        } else if (speakerId.startsWith('USR_')) {
-          displayName = speakerId.replace(/^USR_/, '').replace(/_/g, ' ');
-        }
-
-        const foundUser = registeredUsers.find(u => 
-          (u.name || '').toLowerCase() === displayName.toLowerCase() ||
-          (u.name || '').toLowerCase() === speakerId.toLowerCase()
-        );
-        if (foundUser && foundUser.name) displayName = foundUser.name;
 
         const avatarHtml = (foundUser && foundUser.avatar_b64)
-          ? `<img class="spk-avatar-img" src="${foundUser.avatar_b64}" alt="${escapeHtml(displayName)}">`
+          ? `<img class="spk-avatar-img" src="${foundUser.avatar_b64}" alt="${escapeHtml(normName)}">`
+          : `<div class="spk-avatar-placeholder">${escapeHtml(normName.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase())}</div>`;
+        const companyHtml = foundUser && foundUser.company_name
+          ? `<div class="spk-company">${escapeHtml(foundUser.company_name)}</div>`
           : '';
 
-        const box = document.createElement('div');
-        box.className = 'speaker-box';
-        box.dataset.speaker = speakerId;
-        box.innerHTML = `
-      <div class="speaker-box-header">
-        ${avatarHtml}
-        <span class="spk-name" title="Click to rename" contenteditable="false">${escapeHtml(displayName)}</span>
-        <span class="spk-dot" style="background:${color}"></span>
-      </div>
-      <div class="speaker-box-body"></div>
-    `;
+        const boxEl = document.createElement('div');
+        boxEl.className = 'speaker-box';
+        boxEl.id = customId;
+        boxEl.dataset.speaker = customId;
+        boxEl.innerHTML = `
+          <div class="speaker-box-header">
+            ${avatarHtml}
+            <div class="spk-identity">
+              <div class="spk-identity-text">
+                <div class="spk-name">${escapeHtml(normName)}</div>
+                ${companyHtml}
+              </div>
+              <span class="spk-dot" style="background:${color}"></span>
+            </div>
+          </div>
+          <div class="speaker-box-body"></div>
+        `;
 
-        // Rename on click
-        const nameEl = box.querySelector('.spk-name');
-        nameEl.addEventListener('click', () => {
-          nameEl.contentEditable = 'true';
-          nameEl.focus();
-          const sel = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(nameEl);
-          sel.removeAllRanges(); sel.addRange(range);
-        });
-        nameEl.addEventListener('blur', () => {
-          nameEl.contentEditable = 'false';
-          speakerBoxes[speakerId].name = nameEl.textContent.trim() || displayName;
-          recalculateSpeakingChart(finalizedTurns);
-        });
-        nameEl.addEventListener('keydown', e => {
-          if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
-        });
+        bringSpeakerBoxToTop(boxEl);
 
-        speakerContainer.appendChild(box);
-
-        speakerBoxes[speakerId] = {
-          boxEl: box,
-          bodyEl: box.querySelector('.speaker-box-body'),
+        const newBox = {
+          boxEl,
+          bodyEl: boxEl.querySelector('.speaker-box-body'),
           color,
-          name: displayName,
+          name: normName,
         };
-        return speakerBoxes[speakerId];
+        speakerBoxes[customId] = newBox;
+        return newBox;
       }
 
-      function speakerName(id) {
-        return speakerBoxes[id] ? speakerBoxes[id].name : ('Speaker ' + id);
+      function getOrCreateNamedSpeakerBox(realName) {
+        return { speakerId: 'spk_' + realName.toLowerCase().replace(/[^a-z0-9_]/g, '_'), box: getOrCreateSpeakerBox(realName) };
+      }
+
+      function speakerName(idOrName) {
+        if (!idOrName) return 'Speaker ?';
+        let norm = String(idOrName).trim();
+        if (norm.startsWith('spk_') || norm.startsWith('USR_')) {
+          norm = norm.replace(/^(spk_|USR_)/, '').replace(/_/g, ' ');
+        }
+        if (speakerBoxes[idOrName]) {
+          return speakerBoxes[idOrName].name;
+        }
+        const customId = 'spk_' + norm.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        if (speakerBoxes[customId]) {
+          return speakerBoxes[customId].name;
+        }
+        // If it's a single raw letter (e.g. 'A' -> 'Speaker A')
+        if (/^[A-Z0-9]$/i.test(norm)) {
+          if (sessionClusterMap[norm]) return sessionClusterMap[norm];
+          return 'Speaker ' + norm.toUpperCase();
+        }
+        // Match against registered users
+        const foundUser = registeredUsers.find(u => (u.name || '').toLowerCase() === norm.toLowerCase());
+        if (foundUser && foundUser.name) return foundUser.name;
+        return norm;
       }
 
       function escapeHtml(s) {
@@ -1269,7 +1386,7 @@
         const text = data.transcript || '';
         const isFinal = !!data.end_of_turn;
         const rawSpk = data.speaker_label || null;
-        const speakerId = (rawSpk && rawSpk !== 'PENDING') ? rawSpk : null;
+        const speakerId = (rawSpk && rawSpk !== 'PENDING') ? (sessionClusterMap[rawSpk] || rawSpk) : null;
 
         let entry = activeTurns[turnOrder];
 
@@ -1280,7 +1397,9 @@
 
           if (speakerId) {
             const box = getOrCreateSpeakerBox(speakerId);
-            box.bodyEl.appendChild(turnEl);
+            if (!box.bodyEl.contains(turnEl)) {
+              box.bodyEl.appendChild(turnEl);
+            }
             scrollBoxToBottom(box.bodyEl);
           }
           // If no speaker yet, keep in interim bar (handled below)
@@ -1291,7 +1410,9 @@
           // Existing turn — if speaker arrived/changed, move element into speaker box
           if (speakerId && speakerId !== entry.speakerId) {
             const box = getOrCreateSpeakerBox(speakerId);
-            box.bodyEl.appendChild(entry.turnEl);
+            if (!box.bodyEl.contains(entry.turnEl)) {
+              box.bodyEl.appendChild(entry.turnEl);
+            }
             scrollBoxToBottom(box.bodyEl);
             entry.speakerId = speakerId;
           }
@@ -1300,6 +1421,9 @@
         // Update text
         if (speakerId) {
           entry.turnEl.textContent = text;
+          // The text can grow after its element has already been added. Pin only
+          // after that mutation, so every incoming update lands at the bottom.
+          scrollBoxToBottom(entry.turnEl.parentElement);
           setInterimText(''); // clear interim bar if we now have a speaker
         } else {
           setInterimText(text); // show in interim bar until speaker known
@@ -1330,7 +1454,7 @@
         if (words.length > 0) {
           let cur = null;
           for (const w of words) {
-            const spk = w.speaker || speakerId || 'A';
+            const spk = w.speaker || rawSpk || 'A';
             const wt = (w.word || w.text || '').trim();
             if (!wt) continue;
             if (!cur || cur.speaker !== spk) {
@@ -1347,7 +1471,7 @@
         // Fallback to single segment if no word diarization returned
         if (segments.length === 0) {
           segments = [{
-            speaker: speakerId || 'A',
+            speaker: rawSpk || 'A',
             words: [text],
             startMs: 0,
             endMs: 0
@@ -1360,7 +1484,8 @@
           const segText = seg.words.join(' ').trim();
           if (!segText) return;
 
-          const segSpeaker = seg.speaker || 'A';
+          const rawSegSpk = seg.speaker || rawSpk || 'A';
+          const resolvedSegSpk = sessionClusterMap[rawSegSpk] || rawSegSpk;
           const segDuration = Math.max(0.4, ((seg.endMs - seg.startMs) / 1000) || (seg.words.length * 0.4));
           const segTurnOrder = nextGlobalTurnOrder++;
 
@@ -1372,8 +1497,11 @@
             segEl.className = 'turn-line';
           }
 
-          const box = getOrCreateSpeakerBox(segSpeaker);
-          box.bodyEl.appendChild(segEl);
+          const box = getOrCreateSpeakerBox(resolvedSegSpk);
+          segEl.dataset.turn = String(segTurnOrder);
+          if (!box.bodyEl.contains(segEl)) {
+            box.bodyEl.appendChild(segEl);
+          }
           segEl.textContent = segText;
           scrollBoxToBottom(box.bodyEl);
 
@@ -1381,19 +1509,16 @@
           const segAudioB64 = getTurnAudioSliceBase64(turnOrder, seg.startMs, seg.endMs, turnStartMs);
 
           // Record for download
-          rawLines.push({ time: fmtTime(), text: segText, speakerId: segSpeaker });
+          rawLines.push({ time: fmtTime(), text: segText, speakerId: resolvedSegSpk });
 
           // Store for speaking chart
-          fTurns[segTurnOrder] = { turnEl: segEl, speakerId: segSpeaker, originalSpeakerId: segSpeaker, text: segText, duration: segDuration };
+          fTurns[segTurnOrder] = { turnEl: segEl, speakerId: resolvedSegSpk, originalSpeakerId: rawSegSpk, text: segText, duration: segDuration };
 
           // Kick off background translation
           computeTranslations(segEl, segText);
 
-          // Auto-identify this turn against registered voiceprints
-          autoIdentifyTurn(segTurnOrder, fTurns, segAudioB64);
-
-          // Upload turn audio to backend for admin page access
-          uploadTurnAudioToBackend(segTurnOrder, segText, segSpeaker, segAudioB64);
+          // Upload turn audio to backend (single source of truth: backend performs ECAPA-TDNN ID and persists to SQLite DB)
+          uploadTurnAudioToBackend(segTurnOrder, segText, rawSegSpk, segAudioB64);
         });
 
         setInterimText('');
@@ -1406,8 +1531,15 @@
       }
 
       function scrollBoxToBottom(bodyEl) {
-        if (!bodyEl) return;
-        bodyEl.scrollTo({ top: bodyEl.scrollHeight, behavior: 'smooth' });
+        if (!bodyEl || !bodyEl.classList.contains('speaker-box-body')) return;
+
+        // Set it now, then once more on the next paint after the browser has
+        // measured the new/edited line. Both assignments are instant (no smooth
+        // animation), and every incoming update intentionally overrides a manual
+        // upward scroll.
+        const pin = () => { bodyEl.scrollTop = bodyEl.scrollHeight; };
+        pin();
+        requestAnimationFrame(pin);
       }
 
       // ── Audio Turn Buffering (for ECAPA-TDNN) ──────────────────────────────
@@ -1528,6 +1660,8 @@
         const wsParams = new URLSearchParams({
           sample_rate: '16000',
           speech_model: 'universal-3-5-pro',
+          language_code: 'en',
+          language_codes: 'en',
           mode: 'balanced',
           speaker_labels: 'true',
           max_speakers: '4',
@@ -1536,35 +1670,36 @@
         aaiSocket = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?${wsParams.toString()}`);
 
         aaiSocket.onopen = () => {
-          setStatus('Listening…');
-          try {
-            streamCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-            streamSource = streamCtx.createMediaStreamSource(micStream);
-            streamProcessor = streamCtx.createScriptProcessor(2048, 1, 1);
-            streamProcessor.onaudioprocess = (e) => {
-              if (isTranscriptionPaused) {
-                setInterimText('');
-                return; // Mute / pause audio processing without closing websocket
-              }
-              if (!aaiSocket || aaiSocket.readyState !== WebSocket.OPEN) return;
-              lastAudioFrameTime = Date.now();
-              const float32 = e.inputBuffer.getChannelData(0);
-              const pcmBuf = floatTo16BitPCM(float32);
-              aaiSocket.send(pcmBuf);
+          setStatus(isTranscriptionPaused ? 'Paused (Transcribing stopped)' : 'Listening...');
+          if (!streamCtx) {
+            try {
+              streamCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+              streamSource = streamCtx.createMediaStreamSource(micStream);
+              streamProcessor = streamCtx.createScriptProcessor(2048, 1, 1);
+              streamProcessor.onaudioprocess = (e) => {
+                lastAudioFrameTime = Date.now();
+                if (isTranscriptionPaused) {
+                  setInterimText('');
+                  return;
+                }
+                if (!aaiSocket || aaiSocket.readyState !== WebSocket.OPEN) return;
+                const float32 = e.inputBuffer.getChannelData(0);
+                const pcmBuf = floatTo16BitPCM(float32);
+                aaiSocket.send(pcmBuf);
 
-              // Also buffer audio for the current active turn (for voiceprint tagging)
-              if (currentRecordingTurnOrder !== null) {
-                const int16Copy = new Int16Array(pcmBuf.slice(0));
-                appendTurnAudio(currentRecordingTurnOrder, int16Copy);
-              }
-            };
-            streamSource.connect(streamProcessor);
-            streamSilentGain = streamCtx.createGain();
-            streamSilentGain.gain.value = 0;
-            streamProcessor.connect(streamSilentGain);
-            streamSilentGain.connect(streamCtx.destination);
-          } catch (err) {
-            setStatus('Audio setup failed: ' + err.message);
+                if (currentRecordingTurnOrder !== null) {
+                  const int16Copy = new Int16Array(pcmBuf.slice(0));
+                  appendTurnAudio(currentRecordingTurnOrder, int16Copy);
+                }
+              };
+              streamSource.connect(streamProcessor);
+              streamSilentGain = streamCtx.createGain();
+              streamSilentGain.gain.value = 0;
+              streamProcessor.connect(streamSilentGain);
+              streamSilentGain.connect(streamCtx.destination);
+            } catch (err) {
+              setStatus('Audio setup failed: ' + err.message);
+            }
           }
         };
 
@@ -1590,7 +1725,15 @@
         };
 
         aaiSocket.onerror = () => { };
-        aaiSocket.onclose = () => { };
+        aaiSocket.onclose = () => {
+          if (listening && micStream) {
+            setTimeout(() => {
+              if (listening && micStream) {
+                setupAssemblyAIStream();
+              }
+            }, 1500);
+          }
+        };
       }
 
       // Stop the audio capture graph (mic → processor → AAI socket) but leave socket open.
@@ -1871,54 +2014,6 @@
         } catch(e) {}
       }
 
-      // ── Find or Create a dedicated Speaker Box by real name ─────────────────
-      function getOrCreateNamedSpeakerBox(realName) {
-        // 1. Check if an existing box already has this exact name
-        for (const [sid, box] of Object.entries(speakerBoxes)) {
-          if (box.name.toLowerCase() === realName.toLowerCase()) {
-            return { speakerId: sid, box };
-          }
-        }
-
-        // 2. Create a dedicated box for this speaker name
-        const customId = 'USR_' + realName.replace(/[^a-zA-Z0-9_]/g, '_');
-        if (speakerBoxes[customId]) {
-          return { speakerId: customId, box: speakerBoxes[customId] };
-        }
-
-        const idx = Object.keys(speakerBoxes).length;
-        const color = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
-        const name = realName;
-
-        const foundUser = registeredUsers.find(u => (u.name || '').toLowerCase() === realName.toLowerCase());
-        const avatarHtml = (foundUser && foundUser.avatar_b64)
-          ? `<img class="spk-avatar-img" src="${foundUser.avatar_b64}" alt="${escapeHtml(name)}">`
-          : '';
-
-        const boxEl = document.createElement('div');
-        boxEl.className = 'speaker-box';
-        boxEl.dataset.speaker = customId;
-        boxEl.innerHTML = `
-          <div class="speaker-box-header">
-            ${avatarHtml}
-            <span class="spk-name" title="Click to rename" contenteditable="false">${escapeHtml(name)}</span>
-            <span class="spk-dot" style="background:${color}"></span>
-          </div>
-          <div class="speaker-box-body"></div>
-        `;
-
-        speakerContainer.appendChild(boxEl);
-
-        const newBox = {
-          boxEl,
-          bodyEl: boxEl.querySelector('.speaker-box-body'),
-          color,
-          name,
-        };
-        speakerBoxes[customId] = newBox;
-        return { speakerId: customId, box: newBox };
-      }
-
       // Reassign a turn to a named speaker or raw speaker box
       function reassignTurnToSpeaker(turnOrder, realName, isRawSpeakerId = false) {
         const ft = finalizedTurns[turnOrder];
@@ -1935,8 +2030,13 @@
           targetBox = res.box;
         }
 
+        bringSpeakerBoxToTop(targetBox.boxEl);
+
         if (targetSpeakerId !== oldSpeakerId) {
-          targetBox.bodyEl.appendChild(ft.turnEl);
+          ft.turnEl.dataset.turn = String(turnOrder);
+          if (!targetBox.bodyEl.contains(ft.turnEl)) {
+            targetBox.bodyEl.appendChild(ft.turnEl);
+          }
           scrollBoxToBottom(targetBox.bodyEl);
           ft.speakerId = targetSpeakerId;
 
@@ -1945,18 +2045,29 @@
         }
 
         // Clean empty boxes if any box has 0 sentences left
-        for (const [sid, box] of Object.entries(speakerBoxes)) {
-          if (box.bodyEl && box.bodyEl.children.length === 0) {
-            box.boxEl.remove();
-            delete speakerBoxes[sid];
-          }
-        }
+        cleanEmptySpeakerBoxes();
 
         recalculateSpeakingChart(finalizedTurns);
       }
 
+      function cleanEmptySpeakerBoxes() {
+        if (!speakerContainer) return;
+        const allBoxes = Array.from(speakerContainer.querySelectorAll('.speaker-box'));
+        allBoxes.forEach(boxEl => {
+          const body = boxEl.querySelector('.speaker-box-body');
+          const lines = body ? body.querySelectorAll('.turn-line') : [];
+          if (lines.length === 0) {
+            boxEl.remove();
+            for (const [sid, box] of Object.entries(speakerBoxes)) {
+              if (box.boxEl === boxEl) {
+                delete speakerBoxes[sid];
+              }
+            }
+          }
+        });
+      }
+
       // Auto-identify a finalized turn against registered voiceprints with Cluster Inheritance
-      const sessionClusterMap = {};
 
       async function autoIdentifyTurn(turnOrder, fTurns, explicitAudioB64) {
         if (!registeredUsers || registeredUsers.length === 0) {
@@ -2018,15 +2129,35 @@
           const headerEl = box.boxEl.querySelector('.speaker-box-header');
           if (headerEl) {
             let avatarEl = headerEl.querySelector('.spk-avatar-img');
+            let placeholderEl = headerEl.querySelector('.spk-avatar-placeholder');
+            const identityTextEl = headerEl.querySelector('.spk-identity-text');
+            let companyEl = headerEl.querySelector('.spk-company');
+            const companyName = (u && u.company_name) ? u.company_name : '';
+            if (companyName) {
+              if (!companyEl && identityTextEl) {
+                companyEl = document.createElement('div');
+                companyEl.className = 'spk-company';
+                identityTextEl.appendChild(companyEl);
+              }
+              companyEl.textContent = companyName;
+            } else if (companyEl) {
+              companyEl.remove();
+            }
             if (u && u.avatar_b64) {
               if (!avatarEl) {
                 avatarEl = document.createElement('img');
                 avatarEl.className = 'spk-avatar-img';
-                headerEl.insertBefore(avatarEl, headerEl.querySelector('.spk-name'));
+                avatarEl.alt = box.name || 'Speaker profile';
+                headerEl.insertBefore(avatarEl, headerEl.firstChild);
               }
+              if (placeholderEl) placeholderEl.remove();
               if (avatarEl.src !== u.avatar_b64) avatarEl.src = u.avatar_b64;
             } else if (avatarEl) {
               avatarEl.remove();
+              placeholderEl = document.createElement('div');
+              placeholderEl.className = 'spk-avatar-placeholder';
+              placeholderEl.textContent = (box.name || 'SP').split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+              headerEl.insertBefore(placeholderEl, headerEl.firstChild);
             }
           }
         }
@@ -2034,6 +2165,7 @@
 
       function syncTurnsFromServer(turns) {
         if (!turns) return;
+        const changedBodies = new Set();
         if (turns.length === 0) {
           for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
         }
@@ -2065,32 +2197,21 @@
 
           const turnOrder = Number(t.turn_order);
           const conf = t.predicted_confidence || 0;
-          let assignedSpeaker = t.tagged_as || (conf > 15.0 ? t.predicted_speaker : null);
-          if (!assignedSpeaker && sessionClusterMap[rawSpeaker]) {
-            assignedSpeaker = sessionClusterMap[rawSpeaker];
-          }
-          const isNamed = !!assignedSpeaker;
-          const targetSpeakerName = assignedSpeaker || rawSpeaker;
+          const assignedSpeaker = (t.tagged_as || (conf > 15.0 ? t.predicted_speaker : null) || sessionClusterMap[rawSpeaker] || ('Speaker ' + rawSpeaker)).trim();
 
-          let targetBox, targetSpeakerId;
-          if (isNamed) {
-            const res = getOrCreateNamedSpeakerBox(targetSpeakerName);
-            targetBox = res.box;
-            targetSpeakerId = res.speakerId;
-          } else {
-            targetBox = getOrCreateSpeakerBox(targetSpeakerName);
-            targetSpeakerId = targetSpeakerName;
-          }
+          const targetBox = getOrCreateSpeakerBox(assignedSpeaker);
+          const targetSpeakerId = targetBox.boxEl.id;
 
           let ft = finalizedTurns[turnOrder];
           if (!ft) {
             // New turn loaded from DB
             const turnEl = document.createElement('div');
             turnEl.className = 'turn-line';
+            turnEl.dataset.turn = String(turnOrder);
             turnEl.textContent = t.text || '';
             turnEl.dataset.original = t.text || '';
             targetBox.bodyEl.appendChild(turnEl);
-            scrollBoxToBottom(targetBox.bodyEl);
+            changedBodies.add(targetBox.bodyEl);
 
             finalizedTurns[turnOrder] = {
               turnEl,
@@ -2104,15 +2225,19 @@
             computeTranslations(turnEl, t.text || '');
           } else {
             // Update existing turn if changed
+            ft.turnEl.dataset.turn = String(turnOrder);
             if (t.text && ft.text !== t.text) {
               ft.text = t.text;
               ft.turnEl.textContent = t.text;
               ft.turnEl.dataset.original = t.text;
               computeTranslations(ft.turnEl, t.text);
+              changedBodies.add(ft.turnEl.parentElement);
             }
             if (ft.speakerId !== targetSpeakerId) {
-              targetBox.bodyEl.appendChild(ft.turnEl);
-              scrollBoxToBottom(targetBox.bodyEl);
+              if (!targetBox.bodyEl.contains(ft.turnEl)) {
+                targetBox.bodyEl.appendChild(ft.turnEl);
+              }
+              changedBodies.add(targetBox.bodyEl);
               ft.speakerId = targetSpeakerId;
             }
           }
@@ -2122,12 +2247,33 @@
           }
         });
 
+        // Only touch the panel that changed. Re-processing every speaker panel on
+        // each event caused the visible refresh/flicker.
+        changedBodies.forEach(scrollBoxToBottom);
+
         // 4. Clean empty speaker boxes
-        for (const [sid, box] of Object.entries(speakerBoxes)) {
-          if (box.bodyEl && box.bodyEl.children.length === 0) {
-            box.boxEl.remove();
-            delete speakerBoxes[sid];
+        cleanEmptySpeakerBoxes();
+
+        // Keep the active speaker at the top, but do not reorder anything when it
+        // is already there. This avoids a needless DOM refresh on each update.
+        const spkLatestTurn = {};
+        for (const [tOrderStr, ft] of Object.entries(finalizedTurns)) {
+          const to = Number(tOrderStr);
+          const sid = ft.speakerId;
+          if (!spkLatestTurn[sid] || to > spkLatestTurn[sid]) {
+            spkLatestTurn[sid] = to;
           }
+        }
+
+        const sortedBoxes = Object.entries(speakerBoxes).sort((a, b) => {
+          const toA = spkLatestTurn[a[0]] || 0;
+          const toB = spkLatestTurn[b[0]] || 0;
+          return toB - toA;
+        });
+
+        const newestBox = sortedBoxes.length ? sortedBoxes[0][1].boxEl : null;
+        if (newestBox && speakerContainer.firstElementChild !== newestBox) {
+          speakerContainer.insertBefore(newestBox, speakerContainer.firstElementChild);
         }
 
         // 5. Empty state handling
@@ -2156,23 +2302,48 @@
         updateSpeakerAvatars();
       }
 
-      async function syncFromServer() {
+      let turnsSyncInFlight = false;
+      let turnsSyncQueued = false;
+
+      async function syncTurns() {
+        // EventSource can emit several notifications for one transcript change.
+        // Coalesce them so the DOM is updated once in the background instead of
+        // repeatedly repainting the same speaker panels.
+        if (turnsSyncInFlight) {
+          turnsSyncQueued = true;
+          return;
+        }
+        turnsSyncInFlight = true;
         try {
-          const [uResp, tResp, aResp, rResp] = await Promise.all([
-            fetch('/api/registered-users'),
-            fetch('/api/turns'),
-            fetch('/api/meeting-analytics'),
-            fetch('/api/recording-state')
-          ]);
-          if (uResp.ok) {
-            const uData = await uResp.json();
-            registeredUsers = uData.users || [];
+          const resp = await fetch('/api/turns');
+          if (resp.ok) {
+            const data = await resp.json();
+            syncTurnsFromServer(data.turns || []);
+          }
+        } catch(e) {
+        } finally {
+          turnsSyncInFlight = false;
+          if (turnsSyncQueued) {
+            turnsSyncQueued = false;
+            syncTurns();
+          }
+        }
+      }
+
+      async function syncUsers() {
+        try {
+          const resp = await fetch('/api/registered-users');
+          if (resp.ok) {
+            const data = await resp.json();
+            registeredUsers = data.users || [];
             updateSpeakerAvatars();
           }
-          if (tResp.ok) {
-            const tData = await tResp.json();
-            syncTurnsFromServer(tData.turns || []);
-          }
+        } catch(e) {}
+      }
+
+      async function syncAnalytics() {
+        try {
+          const aResp = await fetch('/api/meeting-analytics');
           if (aResp && aResp.ok) {
             const aData = await aResp.json();
             // Restore Wordcloud / Topics from SQLite DB
@@ -2191,10 +2362,17 @@
               if (Array.isArray(aData.analysis.speakers) && aData.analysis.speakers.length > 0) {
                 aData.analysis.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
               }
-            } else {
-              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
             }
           }
+        } catch(e) {}
+      }
+
+      async function syncFromServer() {
+        syncTurns();
+        syncUsers();
+        syncAnalytics();
+        try {
+          const rResp = await fetch('/api/recording-state');
           if (rResp && rResp.ok) {
             const rData = await rResp.json();
             isTranscriptionPaused = !rData.is_transcribing;
@@ -2213,83 +2391,80 @@
         function connect() {
           try {
             const es = new EventSource('/api/stream-events');
+            es.addEventListener('open', () => { retryDelay = 1000; });
             es.addEventListener('connected', () => {
               retryDelay = 1000;
-              syncFromServer();
+              syncTurns();
+              syncUsers();
             });
-            es.addEventListener('turn_update', (e) => {
-              try {
-                const data = JSON.parse(e.data);
-                if (data.turn_order) {
-                  const conf = data.predicted_confidence || 0;
-                  const target = data.tagged_as || (conf > 15.0 ? data.predicted_speaker : null);
-                  if (target) {
-                    reassignTurnToSpeaker(data.turn_order, target);
-                  }
-                }
-              } catch(err) {}
-            });
+            es.addEventListener('turn_update', () => { syncTurns(); });
             es.addEventListener('tag_updated', (e) => {
               try {
                 const data = JSON.parse(e.data);
-                if (data.turn_order) {
-                  if (data.tagged_as) {
-                    reassignTurnToSpeaker(data.turn_order, data.tagged_as);
-                  } else {
-                    const ft = finalizedTurns[data.turn_order];
-                    if (ft) reassignTurnToSpeaker(data.turn_order, ft.originalSpeakerId || 'A', true);
-                  }
+                if (data.turn_order && data.tagged_as) {
+                  reassignTurnToSpeaker(data.turn_order, data.tagged_as);
                 }
               } catch(err) {}
+              syncTurns();
             });
-            es.addEventListener('turn_deleted', (e) => {
+            es.addEventListener('turns_updated', () => { syncTurns(); });
+            es.addEventListener('turn_deleted', () => { syncTurns(); });
+            es.addEventListener('users_updated', () => { syncUsers(); syncTurns(); });
+            es.addEventListener('turns_cleared', () => {
+              Object.values(finalizedTurns).forEach(ft => { if (ft.turnEl) ft.turnEl.remove(); });
+              for (const k of Object.keys(finalizedTurns)) delete finalizedTurns[k];
+              for (const [sid, box] of Object.entries(speakerBoxes)) {
+                if (box.boxEl) box.boxEl.remove();
+                delete speakerBoxes[sid];
+              }
+              for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
+              for (const k of Object.keys(turnAudioBuffers)) delete turnAudioBuffers[k];
+              for (const k of Object.keys(activeTurns)) {
+                if (activeTurns[k].turnEl) activeTurns[k].turnEl.remove();
+                delete activeTurns[k];
+              }
+              if (emptyState && !emptyState.parentNode) speakerContainer.appendChild(emptyState);
+              rawLines.length = 0;
+              nextGlobalTurnOrder = 1;
+              recalculateSpeakingChart(finalizedTurns);
+              wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
+              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
+              syncTurns();
+            });
+            es.addEventListener('cleared', () => {
+              Object.values(finalizedTurns).forEach(ft => { if (ft.turnEl) ft.turnEl.remove(); });
+              for (const k of Object.keys(finalizedTurns)) delete finalizedTurns[k];
+              for (const [sid, box] of Object.entries(speakerBoxes)) {
+                if (box.boxEl) box.boxEl.remove();
+                delete speakerBoxes[sid];
+              }
+              for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
+              for (const k of Object.keys(turnAudioBuffers)) delete turnAudioBuffers[k];
+              for (const k of Object.keys(activeTurns)) {
+                if (activeTurns[k].turnEl) activeTurns[k].turnEl.remove();
+                delete activeTurns[k];
+              }
+              if (emptyState && !emptyState.parentNode) speakerContainer.appendChild(emptyState);
+              rawLines.length = 0;
+              registeredUsers = [];
+              nextGlobalTurnOrder = 1;
+              recalculateSpeakingChart(finalizedTurns);
+              updateSpeakerAvatars();
+              wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
+              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
+              syncTurns();
+            });
+            es.addEventListener('analysis_updated', (e) => {
               try {
                 const data = JSON.parse(e.data);
-                const to = Number(data.turn_order);
-                const ft = finalizedTurns[to];
-                if (ft) {
-                  if (ft.turnEl && ft.turnEl.parentNode) ft.turnEl.remove();
-                  delete finalizedTurns[to];
-                  // clean empty boxes
-                  for (const [sid, box] of Object.entries(speakerBoxes)) {
-                    if (box.bodyEl && box.bodyEl.children.length === 0) {
-                      box.boxEl.remove();
-                      delete speakerBoxes[sid];
-                    }
-                  }
-                  if (Object.keys(finalizedTurns).length === 0) {
-                    if (emptyState && !emptyState.parentNode) speakerContainer.appendChild(emptyState);
-                  }
-                  recalculateSpeakingChart(finalizedTurns);
-                }
-              } catch(err) {}
-            });
-            es.addEventListener('turns_updated', async () => {
-              try {
-                const resp = await fetch('/api/turns');
-                if (resp.ok) {
-                  const tData = await resp.json();
-                  syncTurnsFromServer(tData.turns || []);
-                }
+                if (data.overall_summary) renderOrUpdateMeetingSummary(data.overall_summary);
+                if (Array.isArray(data.speakers)) data.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
               } catch(err) {}
             });
             es.addEventListener('wordcloud_updated', (e) => {
               try {
                 const data = JSON.parse(e.data);
-                if (Array.isArray(data.words) && data.words.length > 0) {
-                  renderWordCloud(data.words);
-                }
-              } catch(err) {}
-            });
-            es.addEventListener('analysis_updated', (e) => {
-              try {
-                const data = JSON.parse(e.data);
-                if (data.overall_summary) {
-                  renderOrUpdateMeetingSummary(data.overall_summary);
-                }
-                if (Array.isArray(data.speakers)) {
-                  data.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
-                }
+                if (Array.isArray(data.words) && data.words.length > 0) renderWordCloud(data.words);
               } catch(err) {}
             });
             es.addEventListener('wordcloud_cleared', () => {
@@ -2313,61 +2488,9 @@
                 }
               } catch(err) {}
             });
-            es.addEventListener('turns_cleared', () => {
-              Object.values(finalizedTurns).forEach(ft => { if (ft.turnEl) ft.turnEl.remove(); });
-              for (const k of Object.keys(finalizedTurns)) delete finalizedTurns[k];
-              for (const [sid, box] of Object.entries(speakerBoxes)) {
-                if (box.boxEl) box.boxEl.remove();
-                delete speakerBoxes[sid];
-              }
-              for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
-              for (const k of Object.keys(turnAudioBuffers)) delete turnAudioBuffers[k];
-              for (const k of Object.keys(activeTurns)) {
-                if (activeTurns[k].turnEl) activeTurns[k].turnEl.remove();
-                delete activeTurns[k];
-              }
-              if (emptyState && !emptyState.parentNode) speakerContainer.appendChild(emptyState);
-              rawLines.length = 0;
-              nextGlobalTurnOrder = 1;
-              recalculateSpeakingChart(finalizedTurns);
-              wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
-              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
-            });
-            es.addEventListener('cleared', () => {
-              Object.values(finalizedTurns).forEach(ft => { if (ft.turnEl) ft.turnEl.remove(); });
-              for (const k of Object.keys(finalizedTurns)) delete finalizedTurns[k];
-              for (const [sid, box] of Object.entries(speakerBoxes)) {
-                if (box.boxEl) box.boxEl.remove();
-                delete speakerBoxes[sid];
-              }
-              for (const k of Object.keys(sessionClusterMap)) delete sessionClusterMap[k];
-              for (const k of Object.keys(turnAudioBuffers)) delete turnAudioBuffers[k];
-              for (const k of Object.keys(activeTurns)) {
-                if (activeTurns[k].turnEl) activeTurns[k].turnEl.remove();
-                delete activeTurns[k];
-              }
-              if (emptyState && !emptyState.parentNode) speakerContainer.appendChild(emptyState);
-              rawLines.length = 0;
-              registeredUsers = [];
-              nextGlobalTurnOrder = 1;
-              recalculateSpeakingChart(finalizedTurns);
-              updateSpeakerAvatars();
-              wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
-              sbBody.innerHTML = '<div class="sb-empty"><span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.</div>';
-            });
-            es.addEventListener('users_updated', async () => {
-              try {
-                const r = await fetch('/api/registered-users');
-                if (r.ok) {
-                  const d = await r.json();
-                  registeredUsers = d.users || [];
-                  updateSpeakerAvatars();
-                }
-              } catch(err) {}
-            });
             es.onerror = () => {
               es.close();
-              retryDelay = Math.min(retryDelay * 2, 30000);
+              retryDelay = Math.min(retryDelay * 2, 15000);
               setTimeout(connect, retryDelay);
             };
           } catch(e) {
@@ -2376,6 +2499,7 @@
         }
         connect();
       }
+
       setupEventSource();
       syncFromServer();
 
