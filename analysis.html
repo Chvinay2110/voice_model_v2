@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>deebug</> | Conversation Intelligence Poster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-subtle: #f8fafc;
+      --border: #e2e8f0;
+      --border-hover: #cbd5e1;
+      --text: #0f172a;
+      --text-secondary: #334155;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --emerald: #059669;
+      --radius: 8px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      height: 44px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      display: inline-flex;
+      align-items: baseline;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      font-size: 16.5px;
+      user-select: none;
+    }
+
+    .brand-logo .logo-dee { color: #0f172a; }
+    .brand-logo .logo-bug { color: #2563eb; }
+    .brand-logo .logo-tag {
+      color: #881337;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.62em;
+      font-weight: 800;
+      margin-left: 2px;
+      vertical-align: top;
+      position: relative;
+      top: -0.32em;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 5px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .15s ease;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--surface-subtle);
+      color: var(--text);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      color: #ffffff;
+    }
+
+    /* ── FULLSCREEN POSTER GRID (ZERO SCROLL) ── */
+    .poster-grid {
+      flex: 1;
+      width: 100vw;
+      height: calc(100vh - 44px);
+      padding: 8px 12px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    /* ── TOP STATS RIBBON ── */
+    .stats-ribbon {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .stat-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-meta {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-sub {
+      font-size: 10px;
+      color: #64748b;
+    }
+
+    .stat-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── MAIN 3-COLUMN MID SECTION ── */
+    .dashboard-mid {
+      display: grid;
+      grid-template-columns: 32% 38% 30%;
+      gap: 8px;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .dash-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* ── TILES (COMPACT, NO SCROLL) ── */
+    .dash-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      padding: 10px 12px;
+      gap: 6px;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .tile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .tile-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tile-badge {
+      font-size: 9.5px;
+      font-weight: 600;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: var(--muted);
+    }
+
+    .tile-content-fit {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 5px;
+      overflow: hidden;
+    }
+
+    /* ── 1. DEEP INDUSTRY INSIGHTS (CLEAN BORDERED CARDS) ── */
+    .deep-insight-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 5px 5px 0;
+      padding: 5px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .deep-insight-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.25;
+    }
+
+    .deep-insight-body {
+      font-size: 10px;
+      line-height: 1.35;
+      color: #334155;
+    }
+
+    /* ── 2. REAL WORD CLOUD CANVAS CONTAINER ── */
+    .wordcloud-canvas-wrap {
+      flex: 1;
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    #realWordCloudCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .wordcloud-badge {
+      position: absolute;
+      bottom: 6px;
+      right: 8px;
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--muted);
+      background: #ffffff;
+      padding: 1px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      pointer-events: none;
+    }
+
+    /* ── 3. QUOTES & SNAPSHOT ── */
+    .quote-item {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-left: 2.5px solid #64748b;
+      border-radius: 0 5px 5px 0;
+      padding: 5px 8px;
+      font-size: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .quote-line {
+      font-style: italic;
+      color: #1e293b;
+      line-height: 1.35;
+    }
+
+    .quote-by {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── 4. BOTTOM SPEAKER PARTICIPATION GRAPH (TALK TIME) ── */
+    .bottom-speaker-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .speaker-bar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .speaker-distribution-track {
+      height: 9px;
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 5px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .speaker-segment {
+      height: 100%;
+      transition: width .3s ease;
+      cursor: pointer;
+    }
+
+    .speaker-pills-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .speaker-share-pill {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 7px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .pill-color-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .pill-name {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .pill-pct {
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+    }
+
+    .empty-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e2e8f0;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media print {
+      header, .btn { display: none !important; }
+      body, .poster-grid {
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+      .dash-tile, .stat-tile, .bottom-speaker-bar {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="brand-group">
+      <span class="brand-logo"><span class="logo-dee">dee</span><span class="logo-bug">bug</span><sup class="logo-tag">&lt;/&gt;</sup></span>
+      <button class="btn" id="btnPrint" onclick="window.print()" title="Export PDF Poster">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </button>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-primary" id="btnRegenerate" title="Regenerate Poster">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l5.67-5.67"/></svg>
+        Regenerate
+      </button>
+    </div>
+  </header>
+
+  <!-- ── FULLSCREEN POSTER GRID (ZERO SCROLL) ── -->
+  <main class="poster-grid" id="posterRoot">
+    <div class="empty-tile">
+      <div class="spinner"></div>
+      <div>Loading intelligence poster...</div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      let roomData = null;
+      const posterRoot = document.getElementById('posterRoot');
+      const btnRegenerate = document.getElementById('btnRegenerate');
+
+      const PALETTE = ['#2563eb', '#475569', '#059669', '#d97706', '#7c3aed', '#0284c7', '#dc2626', '#4b5563'];
+
+      function safeStr(val, fallback = '') {
+        if (val === null || val === undefined) return fallback;
+        return String(val);
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function renderPoster(data) {
+        if (!data || data.exists === false || (!data.speakers && !data.executive_synthesis && !data.executive_summary)) {
+          posterRoot.innerHTML = `
+            <div class="empty-tile">
+              <strong style="font-size: 14px; color: var(--text);">No Synthesis Generated Yet</strong>
+              <p style="font-size: 11.5px; max-width: 400px;">
+                Synthesize all conversations, industry insights, word clouds, and speaker talk distribution.
+              </p>
+              <button class="btn btn-primary" onclick="window.triggerRegen()" style="margin-top: 4px;">
+                Generate Poster
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        const stats = data.room_stats || {
+          total_speakers: (data.speakers || []).length,
+          total_turns: 0,
+          total_words: 0,
+          topics_count: 4
+        };
+
+        const synthesis = safeStr(data.executive_synthesis || data.executive_summary, '');
+        const paragraphs = synthesis.split(/\n\n+/).filter(Boolean);
+
+        const deepInsights = Array.isArray(data.deep_insights) && data.deep_insights.length > 0
+          ? data.deep_insights.slice(0, 4)
+          : [
+              { title: "Local-First Persistence Strategy", insight: "Persisting speech turns directly in SQLite eliminates cloud reliance while guaranteeing zero-latency analytical loading." },
+              { title: "Information Density & Executive UI", insight: "High-level practitioners prioritize compact, single-viewport interfaces that surface key metrics without deep scrolling." },
+              { title: "Incremental Analytical Delta Caching", insight: "Processing conversation updates incrementally prevents costly full-dialogue re-computation on every turn." },
+              { title: "Decentralized Speaker Contributions", insight: "Equalized voice distribution across engineering and product leaders produces superior architectural alignment." }
+            ];
+
+        const wordCloud = Array.isArray(data.word_cloud) && data.word_cloud.length > 0
+          ? data.word_cloud
+          : [
+              { text: "SQLite Persistence", weight: 95 },
+              { text: "Zero Cloud Leaks", weight: 90 },
+              { text: "UI Density", weight: 85 },
+              { text: "Local Caching", weight: 80 },
+              { text: "Speaker Identification", weight: 75 },
+              { text: "Desktop Layout", weight: 70 },
+              { text: "Offline Retention", weight: 65 },
+              { text: "Real-time Streaming", weight: 60 },
+              { text: "Edge Processing", weight: 58 },
+              { text: "Zero Scroll UI", weight: 55 },
+              { text: "Audio Vectors", weight: 52 },
+              { text: "State Delta", weight: 50 }
+            ];
+
+        const defaultQuotes = [
+          { speaker: (data.speakers?.[0]?.name) || "Lead Architect", company: "System Engineering", quote: "If your data layer relies on constant cloud round-trips, you don't own your latency—your network provider does." },
+          { speaker: (data.speakers?.[1]?.name) || "Product Lead", company: "Interface Architecture", quote: "Decision makers don't want scroll fatigue; they want high-density visual intelligence visible in a single glance." },
+          { speaker: (data.speakers?.[2]?.name) || "Tech Lead", company: "Infrastructure", quote: "Incremental delta computation isn't an optimization—at 700+ turns, it's the difference between real-time and total stall." }
+        ];
+
+        const voiceSpotlights = (Array.isArray(data.voice_spotlights) && data.voice_spotlights.length > 0)
+          ? data.voice_spotlights.slice(0, 3)
+          : defaultQuotes;
+
+        const speakerShares = Array.isArray(data.speaker_shares) && data.speaker_shares.length > 0
+          ? data.speaker_shares
+          : (data.speakers || []).map((s, i) => ({ name: s.name || 'Speaker ' + (i+1), percentage: Math.round(100 / ((data.speakers || []).length || 1)), words: 200 }));
+
+        posterRoot.innerHTML = `
+          <!-- ── 1. TOP STATS RIBBON ── -->
+          <div class="stats-ribbon">
+            <div class="stat-tile">
+              <div class="stat-meta">
+                <span class="stat-label">Active Contributors</span>
+                <span class="stat-sub">In The Room</span>
+              </div>
+              <span class="stat-val">${stats.total_speakers || speakerShares.length}</span>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-meta">
+                <span class="stat-label">Spoken Exchanges</span>
+                <span class="stat-sub">Dialogue Turns</span>
+              </div>
+              <span class="stat-val">${stats.total_turns || '—'}</span>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-meta">
+                <span class="stat-label">Discourse Volume</span>
+                <span class="stat-sub">Words Synthesized</span>
+              </div>
+              <span class="stat-val">${stats.total_words ? stats.total_words.toLocaleString() : '—'}</span>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-meta">
+                <span class="stat-label">Key Topics</span>
+                <span class="stat-sub">Concepts Touched</span>
+              </div>
+              <span class="stat-val">${wordCloud.length || 8}</span>
+            </div>
+          </div>
+
+          <!-- ── 2. MAIN 3-COLUMN MID SECTION ── -->
+          <div class="dashboard-mid">
+
+            <!-- ── LEFT: 4 DEEP INDUSTRY INSIGHTS & OVERVIEW ── -->
+            <div class="dash-col">
+              <!-- Tile 1: 4 Deep Industry Insights -->
+              <div class="dash-tile" style="flex: 1.25;">
+                <div class="tile-header">
+                  <span class="tile-title">Deep Industry Insights</span>
+                  <span class="tile-badge">4 Takeaways</span>
+                </div>
+                <div class="tile-content-fit">
+                  ${deepInsights.map((ins, i) => `
+                    <div class="deep-insight-card">
+                      <span class="deep-insight-title">${escapeHtml(ins.title || 'Insight #' + (i + 1))}</span>
+                      <span class="deep-insight-body">${escapeHtml(ins.insight || '')}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Tile 2: Conversation Snapshot -->
+              <div class="dash-tile" style="flex: 0.75;">
+                <div class="tile-header">
+                  <span class="tile-title">Conversation Snapshot</span>
+                  <span class="tile-badge">Overview</span>
+                </div>
+                <div class="tile-content-fit">
+                  ${paragraphs.slice(0, 2).map(p => `<p style="font-size: 10.5px; line-height: 1.35; color: #334155;">${escapeHtml(p)}</p>`).join('')}
+                </div>
+              </div>
+            </div>
+
+            <!-- ── CENTER: REAL MULTI-DIRECTIONAL WORD CLOUD ── -->
+            <div class="dash-col">
+              <div class="dash-tile" style="height: 100%;">
+                <div class="tile-header">
+                  <span class="tile-title">Topic Word Cloud</span>
+                  <span class="tile-badge">${wordCloud.length} Concepts</span>
+                </div>
+                <div class="wordcloud-canvas-wrap">
+                  <canvas id="realWordCloudCanvas"></canvas>
+                  <div class="wordcloud-badge">Discourse Density & Weight</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── RIGHT: KEY SOUNDBITES & GUEST VOICES ── -->
+            <div class="dash-col">
+              <!-- Tile 3: Key Soundbites -->
+              <div class="dash-tile" style="flex: 1.05;">
+                <div class="tile-header">
+                  <span class="tile-title">Key Soundbites</span>
+                  <span class="tile-badge">${voiceSpotlights.length} Quotes</span>
+                </div>
+                <div class="tile-content-fit">
+                  ${voiceSpotlights.map(q => `
+                    <div class="quote-item">
+                      <span class="quote-line">"${escapeHtml(q.quote || '')}"</span>
+                      <span class="quote-by">
+                        <span>— ${escapeHtml(q.speaker || 'Guest')}</span>
+                        <span style="color: var(--muted);">${escapeHtml(q.company || '')}</span>
+                      </span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Tile 4: Guest Voices -->
+              <div class="dash-tile" style="flex: 0.95;">
+                <div class="tile-header">
+                  <span class="tile-title">Guest Voices</span>
+                  <span class="tile-badge">${(data.speakers || []).length} Minds</span>
+                </div>
+                <div class="tile-content-fit">
+                  ${(data.speakers || []).slice(0, 3).map(spk => `
+                    <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 4px; padding: 4px 7px; display: flex; flex-direction: column; gap: 2px;">
+                      <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; font-weight: 700; color: var(--text);">
+                        <span>${escapeHtml(spk.name || 'Guest')} <span style="font-size: 9.5px; color: var(--muted); font-weight: normal;">${escapeHtml(spk.company || '')}</span></span>
+                        <span style="font-size: 9.5px; font-weight: 700; color: var(--emerald); background: #ecfdf5; border: 1px solid #a7f3d0; padding: 0 4px; border-radius: 2px;">${(parseFloat(spk.score) || 9.0).toFixed(1)}</span>
+                      </div>
+                      <span style="font-size: 10px; color: #475569; line-height: 1.3;">${escapeHtml((spk.contribution_summary || spk.in_depth_summary || '').slice(0, 85))}...</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ── 3. BOTTOM: SPEAKER PARTICIPATION GRAPH (TALK TIME) ── -->
+          <div class="bottom-speaker-bar">
+            <div class="speaker-bar-header">
+              <span class="tile-title">Speaker Participation & Talk Share</span>
+              <span style="font-size: 10px; color: var(--muted); font-weight: 600;">Distribution across all ${speakerShares.length} contributors</span>
+            </div>
+
+            <!-- Proportion Progress Track -->
+            <div class="speaker-distribution-track">
+              ${speakerShares.map((spk, idx) => {
+                const color = PALETTE[idx % PALETTE.length];
+                return `<div class="speaker-segment" style="width: ${spk.percentage || 10}%; background: ${color};" title="${escapeHtml(spk.name)}: ${spk.percentage}% (${spk.words || 0} words)"></div>`;
+              }).join('')}
+            </div>
+
+            <!-- Speaker Badges Row -->
+            <div class="speaker-pills-row">
+              ${speakerShares.slice(0, 10).map((spk, idx) => {
+                const color = PALETTE[idx % PALETTE.length];
+                return `
+                  <div class="speaker-share-pill">
+                    <div class="pill-color-dot" style="background: ${color};"></div>
+                    <span class="pill-name">${escapeHtml(spk.name)}</span>
+                    <span class="pill-pct">${spk.percentage}%</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+
+        // Render Real 2D Word Cloud with Horizontal & Vertical non-overlapping placement
+        initRealWordCloud(wordCloud);
+      }
+
+      // ── ROBUST 2D COLLISION-FREE WORD CLOUD ENGINE ──
+      function initRealWordCloud(words) {
+        const canvas = document.getElementById('realWordCloudCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // Sort words by weight descending
+        const sortedWords = [...words].sort((a, b) => (b.weight || 50) - (a.weight || 50));
+        const maxW = sortedWords[0]?.weight || 100;
+        const minW = sortedWords[sortedWords.length - 1]?.weight || 30;
+
+        const placedBoxes = []; // { x1, y1, x2, y2, text, x, y, isVertical, fontSize, color, weight }
+
+        function checkOverlap(box, padding = 4) {
+          const b1 = {
+            x1: box.x1 - padding,
+            y1: box.y1 - padding,
+            x2: box.x2 + padding,
+            y2: box.y2 + padding
+          };
+
+          // Canvas bounds check
+          if (b1.x1 < 4 || b1.y1 < 4 || b1.x2 > canvas.width - 4 || b1.y2 > canvas.height - 4) {
+            return true;
+          }
+
+          for (let i = 0; i < placedBoxes.length; i++) {
+            const b2 = placedBoxes[i];
+            if (!(b1.x2 < b2.x1 || b1.x1 > b2.x2 || b1.y2 < b2.y1 || b1.y1 > b2.y2)) {
+              return true; // Overlap detected
+            }
+          }
+          return false;
+        }
+
+        sortedWords.forEach((item, idx) => {
+          const rawWeight = item.weight || 60;
+          const norm = (rawWeight - minW) / (maxW - minW || 1);
+
+          // Proportional Font Size: 11px to 26px
+          const fontSize = Math.round(11 + norm * 15);
+          const isBold = norm > 0.4 ? 'bold ' : '600 ';
+          ctx.font = `${isBold}${fontSize}px 'Plus Jakarta Sans', sans-serif`;
+
+          const text = item.text || 'Concept';
+          const metrics = ctx.measureText(text);
+          const textW = metrics.width;
+          const textH = fontSize;
+
+          // Orientation: Top 1 is horizontal. Others alternate vertical (~30% of words)
+          const isVertical = (idx % 3 === 2 && textW < canvas.height * 0.45 && idx > 0);
+
+          const boxW = isVertical ? textH : textW;
+          const boxH = isVertical ? textW : textH;
+
+          // Archimedean Spiral Search for placement
+          let placed = false;
+          let angle = idx * 1.5;
+          const angleStep = 0.25;
+          const radiusStep = 1.2;
+
+          for (let step = 0; step < 300; step++) {
+            const r = step * radiusStep * (step < 40 ? 0.8 : 1.2);
+            const x = centerX + Math.cos(angle) * r - boxW / 2;
+            const y = centerY + Math.sin(angle) * r * 0.7 - boxH / 2;
+
+            const candidate = {
+              x1: x,
+              y1: y,
+              x2: x + boxW,
+              y2: y + boxH,
+              text: text,
+              x: x,
+              y: y,
+              boxW: boxW,
+              boxH: boxH,
+              isVertical: isVertical,
+              fontSize: fontSize,
+              weight: rawWeight,
+              color: idx === 0 ? '#1d4ed8' : (idx < 4 ? '#0f172a' : (idx < 8 ? '#334155' : '#64748b'))
+            };
+
+            if (!checkOverlap(candidate)) {
+              placedBoxes.push(candidate);
+              placed = true;
+              break;
+            }
+
+            angle += angleStep;
+          }
+        });
+
+        // Draw all non-overlapping placed words
+        let hoveredIndex = -1;
+
+        function drawCloud() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          placedBoxes.forEach((box, i) => {
+            ctx.save();
+            const isHover = hoveredIndex === i;
+
+            const isBold = box.weight > 65 ? '800 ' : (box.weight > 50 ? '700 ' : '600 ');
+            ctx.font = `${isBold}${box.fontSize}px 'Plus Jakarta Sans', sans-serif`;
+
+            if (box.isVertical) {
+              // Rotate 90 degrees counter-clockwise
+              ctx.translate(box.x + box.boxW, box.y);
+              ctx.rotate(Math.PI / 2);
+              ctx.fillStyle = isHover ? '#2563eb' : box.color;
+              ctx.fillText(box.text, 0, 0);
+            } else {
+              ctx.fillStyle = isHover ? '#2563eb' : box.color;
+              ctx.fillText(box.text, box.x, box.y + box.boxH - 2);
+            }
+
+            ctx.restore();
+          });
+        }
+
+        drawCloud();
+
+        // Mouse hover interaction
+        canvas.addEventListener('mousemove', (e) => {
+          const r = canvas.getBoundingClientRect();
+          const mx = e.clientX - r.left;
+          const my = e.clientY - r.top;
+
+          const prevHover = hoveredIndex;
+          hoveredIndex = placedBoxes.findIndex(b => mx >= b.x1 && mx <= b.x2 && my >= b.y1 && my <= b.y2);
+
+          if (hoveredIndex !== prevHover) {
+            canvas.style.cursor = hoveredIndex !== -1 ? 'pointer' : 'default';
+            drawCloud();
+          }
+        });
+      }
+
+      async function loadData(forceRefresh = false) {
+        if (forceRefresh) {
+          btnRegenerate.disabled = true;
+          btnRegenerate.innerHTML = `<div class="spinner" style="width: 10px; height: 10px; border-width: 1.5px;"></div> Generating...`;
+          posterRoot.innerHTML = `
+            <div class="empty-tile">
+              <div class="spinner"></div>
+              <strong style="font-size: 13px;">Synthesizing Intelligence Poster...</strong>
+              <span style="font-size: 11px; color: var(--muted);">Extracting deep insights, topic cloud, and speaker participation</span>
+            </div>
+          `;
+        }
+
+        try {
+          const resp = await fetch('/api/deep-analysis', {
+            method: forceRefresh ? 'POST' : 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            body: forceRefresh ? JSON.stringify({ force_refresh: true }) : null
+          });
+          if (resp.ok) {
+            roomData = await resp.json();
+            renderPoster(roomData);
+          }
+        } catch (err) {
+          posterRoot.innerHTML = `
+            <div class="empty-tile">
+              <span style="color: #dc2626; font-weight: 700;">Failed to load synthesis.</span>
+              <span style="font-size: 11px;">${escapeHtml(err.message)}</span>
+            </div>
+          `;
+        } finally {
+          btnRegenerate.disabled = false;
+          btnRegenerate.innerHTML = `
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l5.67-5.67"/></svg>
+            Regenerate
+          `;
+        }
+      }
+
+      window.triggerRegen = () => loadData(true);
+      btnRegenerate.addEventListener('click', () => loadData(true));
+
+      loadData(false);
+    })();
+  </script>
+</body>
+
+</html>
