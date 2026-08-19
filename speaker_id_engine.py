@@ -62,6 +62,7 @@ def init_profiles_from_db():
             centroid_tensor = F.normalize(centroid_tensor, p=2, dim=-1)
 
         _profiles[name] = {
+            "user_id": p.get("user_id") or f"usr_{name.lower().replace(' ', '_')}",
             "embeddings": [centroid_tensor] if centroid_tensor is not None else [],
             "centroid": centroid_tensor,
             "enrolled_centroid": centroid_tensor,
@@ -92,15 +93,18 @@ def create_user(speaker_name: str, avatar_b64: Optional[str] = None, company_nam
     name = speaker_name.strip()
     if not name:
         raise ValueError("User name cannot be empty")
+    clean_slug = name.lower().replace(' ', '_')
+    user_id = f"usr_{clean_slug}"
     if name not in _profiles:
         _profiles[name] = {
+            "user_id": user_id,
             "embeddings": [],
             "centroid": None,
             "enrolled_centroid": None,
             "avatar_b64": avatar_b64,
             "company_name": (company_name or "").strip(),
         }
-        log.info("Created user profile: '%s'", name)
+        log.info("Created user profile: '%s' (%s)", name, user_id)
     elif avatar_b64:
         _profiles[name]["avatar_b64"] = avatar_b64
     if company_name is not None:
@@ -110,6 +114,7 @@ def create_user(speaker_name: str, avatar_b64: Optional[str] = None, company_nam
     centroid_list = _profiles[name]["centroid"].tolist() if _profiles[name]["centroid"] is not None else None
     db.upsert_profile(
         name=name,
+        user_id=_profiles[name].get("user_id", user_id),
         avatar_b64=_profiles[name].get("avatar_b64"),
         company_name=_profiles[name].get("company_name"),
         samples_count=len(_profiles[name]["embeddings"]),
@@ -117,6 +122,7 @@ def create_user(speaker_name: str, avatar_b64: Optional[str] = None, company_nam
     )
 
     return {
+        "user_id": _profiles[name].get("user_id", user_id),
         "speaker": name,
         "samples_count": len(_profiles[name]["embeddings"]),
         "has_voiceprint": _profiles[name]["centroid"] is not None,
@@ -317,6 +323,7 @@ def get_users_detailed() -> List[dict]:
     result = []
     for name, data in _profiles.items():
         result.append({
+            "user_id": data.get("user_id") or f"usr_{name.lower().replace(' ', '_')}",
             "name": name,
             "samples_count": len(data["embeddings"]),
             "has_voiceprint": data["centroid"] is not None,

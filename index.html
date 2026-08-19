@@ -344,14 +344,40 @@
     }
 
     /* ── Speaking time graph container ── */
+    .chart-scroll-wrapper {
+      flex: 1;
+      width: 100%;
+      min-height: 160px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+    .chart-scroll-wrapper::-webkit-scrollbar {
+      height: 6px;
+    }
+    .chart-scroll-wrapper::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .chart-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
     .chart-container {
       flex: 1;
       position: relative;
       padding: 10px 14px 14px;
       min-height: 160px;
+      width: 100%;
+      min-width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-sizing: border-box;
     }
 
     /* ── Pure Typographic Word Cloud ── */
@@ -950,8 +976,10 @@
         <!-- Speaking time graph -->
         <div class="stats-section">
           <div class="stats-title">Speaking Time Distribution</div>
-          <div class="chart-container">
-            <canvas id="speakingChartCanvas"></canvas>
+          <div class="chart-scroll-wrapper">
+            <div class="chart-container" id="chartContainerInner">
+              <canvas id="speakingChartCanvas"></canvas>
+            </div>
           </div>
         </div>
         <!-- Fundamental Discussion Topics -->
@@ -1133,8 +1161,21 @@
 
         const totalDur = speakerNames.reduce((sum, name) => sum + nameDurations[name], 0) || 1;
 
-        // Sort by duration descending
+        // Sort by duration descending (top 4 speakers appear in initial visible viewport)
         speakerNames.sort((a, b) => nameDurations[b] - nameDurations[a]);
+
+        // If > 4 speakers, dynamically expand canvas width to allow smooth horizontal scrolling
+        const chartContainerInner = document.getElementById('chartContainerInner');
+        if (chartContainerInner) {
+          if (speakerNames.length > 4) {
+            const dynamicWidth = speakerNames.length * 75;
+            chartContainerInner.style.width = dynamicWidth + 'px';
+            chartContainerInner.style.minWidth = dynamicWidth + 'px';
+          } else {
+            chartContainerInner.style.width = '100%';
+            chartContainerInner.style.minWidth = '100%';
+          }
+        }
 
         const labels = speakerNames;
         const data = speakerNames.map(name => Math.round((nameDurations[name] / totalDur) * 100));
@@ -1150,6 +1191,7 @@
           chartInstance.data.labels = labels;
           chartInstance.data.datasets[0].data = data;
           chartInstance.data.datasets[0].backgroundColor = colors;
+          chartInstance.resize();
           chartInstance.update('none');
         }
       }
@@ -1842,45 +1884,12 @@
           }
 
           // ── Update Speaker Analysis Cards ──
+          // The backend is the single source of truth for eligibility (registered
+          // OR >=100 words). It always returns the FULL currently-eligible speaker
+          // list, so we just render exactly what it sent and prune anything else --
+          // no client-side word-count/registration recomputation, ever.
           sbBody.querySelector('.sb-empty')?.remove();
-
-          if (data.overall_summary) {
-            renderOrUpdateMeetingSummary(data.overall_summary);
-          }
-
-          if (Array.isArray(data.speakers) && data.speakers.length > 0) {
-            data.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
-          }
-
-          // Prune stale speaker cards that no longer match active transcript speakers
-          const activeSpeakerNames = new Set(
-            Object.values(finalizedTurns).map(ft =>
-              (speakerName(ft.speakerId) || ft.speakerId || '').trim().toLowerCase()
-            )
-          );
-          sbBody.querySelectorAll('.sb-speaker-card').forEach(card => {
-            const cardName = (card.querySelector('.sb-spk-name')?.textContent || '').trim().toLowerCase();
-            const wordCount = getSpeakerWordCount(cardName);
-            const isRegistered = (registeredUsers || []).some(u => (u.name || '').toLowerCase() === cardName);
-            if (!activeSpeakerNames.has(cardName) || (!isRegistered && wordCount < 100)) {
-              card.remove();
-            }
-          });
-
-          // Threshold note
-          const hasSpeakerCards = sbBody.querySelectorAll('.sb-speaker-card').length > 0;
-          let note = document.getElementById('sb-threshold-note');
-          if (!hasSpeakerCards) {
-            if (!note) {
-              note = document.createElement('div');
-              note.id = 'sb-threshold-note';
-              note.className = 'sb-empty';
-              note.innerHTML = '<span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.';
-              sbBody.appendChild(note);
-            }
-          } else if (note) {
-            note.remove();
-          }
+          applySpeakerAnalysis(data);
 
         } catch (e) {
         } finally {
@@ -2368,14 +2377,11 @@
                 wordcloudPane.innerHTML = '<span class="wc-empty-msg">Discussion topics will appear here.</span>';
               }
             }
-            // Restore Speaker Intelligence Analysis from SQLite DB
+            // Restore Speaker Intelligence Analysis from SQLite DB. The backend
+            // already filtered this to currently-eligible speakers, so we just
+            // render/prune to match it -- no client-side eligibility recheck.
             if (aData.analysis && typeof aData.analysis === 'object' && Object.keys(aData.analysis).length > 0) {
-              if (aData.analysis.overall_summary) {
-                renderOrUpdateMeetingSummary(aData.analysis.overall_summary);
-              }
-              if (Array.isArray(aData.analysis.speakers) && aData.analysis.speakers.length > 0) {
-                aData.analysis.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
-              }
+              applySpeakerAnalysis(aData.analysis);
             }
           }
         } catch(e) {}
@@ -2471,8 +2477,7 @@
             es.addEventListener('analysis_updated', (e) => {
               try {
                 const data = JSON.parse(e.data);
-                if (data.overall_summary) renderOrUpdateMeetingSummary(data.overall_summary);
-                if (Array.isArray(data.speakers)) data.speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
+                applySpeakerAnalysis(data);
               } catch(err) {}
             });
             es.addEventListener('wordcloud_updated', (e) => {
@@ -2575,33 +2580,15 @@
         return 'low';
       }
 
-      function getSpeakerWordCount(name) {
-        let count = 0;
-        const target = (name || '').trim().toLowerCase();
-        for (const [to, ft] of Object.entries(finalizedTurns)) {
-          const spkName = (speakerName(ft.speakerId) || '').trim().toLowerCase();
-          const spkId = (ft.speakerId || '').trim().toLowerCase();
-          if (spkName === target || spkId === target || ('speaker ' + spkId) === target) {
-            count += (ft.text || '').trim().split(/\s+/).filter(Boolean).length;
-          }
-        }
-        return count;
-      }
-
       function renderOrUpdateSpeakerCard(spk) {
         const name = (spk.name || 'Unknown Speaker').trim();
-        const safeId = 'sb-spk-' + name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const userId = spk.user_id || ('usr_' + name.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+        const safeId = 'sb-spk-' + userId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
 
-        // Eligibility Check: Registered backend user OR >= 100 words spoken
+        // Eligibility (registered OR >=100 words) is decided by the backend only.
+        // If a speaker object reaches this function, the backend already vetted it --
+        // no word-count/registration recheck happens here.
         const foundUser = registeredUsers.find(u => (u.name || '').toLowerCase() === name.toLowerCase());
-        const wordCount = getSpeakerWordCount(name);
-        const isEligible = !!foundUser || wordCount >= 100;
-
-        if (!isEligible) {
-          const existingCard = document.getElementById(safeId);
-          if (existingCard) existingCard.remove();
-          return;
-        }
 
         const scoreVal = typeof spk.score === 'number' ? spk.score : (parseFloat(spk.score) || 5.0);
         const score = scoreVal.toFixed(1);
@@ -2655,10 +2642,12 @@
           card = document.createElement('div');
           card.className = 'sb-speaker-card';
           card.id = safeId;
+          card.dataset.userId = userId;
           card.innerHTML = cardContent;
           sbBody.appendChild(card);
         } else {
           // Smooth in-place update without destroying card DOM
+          card.dataset.userId = userId;
           card.innerHTML = cardContent;
           card.classList.add('updated');
           setTimeout(() => card.classList.remove('updated'), 1200);
@@ -2680,6 +2669,45 @@
         } else {
           const textEl = summaryCard.querySelector('.sb-meeting-summary-text');
           if (textEl) textEl.textContent = overallSummary;
+        }
+      }
+
+      // Single entry point for rendering a backend speaker-analysis payload
+      // ({overall_summary, speakers: [...]}). The backend is the ONLY source of
+      // truth for who is currently eligible (registered OR >=100 words) -- this
+      // renders exactly the speakers it sent and removes any card whose user_id
+      // isn't in that list. Used by the polling loop, the analysis_updated SSE
+      // event, and the on-load/reconnect sync, so all three stay consistent.
+      function applySpeakerAnalysis(analysis) {
+        if (!analysis) return;
+        if (analysis.overall_summary) {
+          renderOrUpdateMeetingSummary(analysis.overall_summary);
+        }
+
+        const speakers = Array.isArray(analysis.speakers) ? analysis.speakers : [];
+        const incomingIds = new Set(
+          speakers.map(s => s.user_id || ('usr_' + (s.name || '').toLowerCase().replace(/[^a-z0-9_]/g, '_')))
+        );
+        speakers.forEach(spk => renderOrUpdateSpeakerCard(spk));
+
+        // Prune any card the backend didn't include this time -- never re-derive
+        // eligibility client-side (no word counts, no registration lookups here).
+        sbBody.querySelectorAll('.sb-speaker-card').forEach(card => {
+          if (!incomingIds.has(card.dataset.userId)) card.remove();
+        });
+
+        const hasSpeakerCards = sbBody.querySelectorAll('.sb-speaker-card').length > 0;
+        let note = document.getElementById('sb-threshold-note');
+        if (!hasSpeakerCards) {
+          if (!note) {
+            note = document.createElement('div');
+            note.id = 'sb-threshold-note';
+            note.className = 'sb-empty';
+            note.innerHTML = '<span class="sb-empty-icon">📊</span>Speaker sections are generated for registered profiles or speakers with 100+ words spoken.';
+            sbBody.appendChild(note);
+          }
+        } else if (note) {
+          note.remove();
         }
       }
 

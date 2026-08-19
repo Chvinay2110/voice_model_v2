@@ -29,8 +29,27 @@ _decode_pcm_base64 = decode_pcm_base64
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Load .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(BASE_DIR, ".env"))
+except Exception:
+    pass
+
+env_path = os.path.join(BASE_DIR, ".env")
+if os.path.exists(env_path):
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip())
+    except Exception:
+        pass
+
 # Gemini API key for AI analysis & Word Cloud
-GEMINI_API_KEY = "AQ.Ab8RN6JhC0axQXrkr8hXPXcc68PT--FFO_8Srqk0blRjepHMFg"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "AIzaSyDj3koF1cM1H-UczS-Gs7-BbDpd4_83D8k"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("app")
@@ -175,36 +194,40 @@ def api_streaming_token():
     return jsonify(token_data)
 
 
-GEMINI_MODELS = [
-    "gemini-3.7-flash",
-    "gemini-3.6-flash",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-flash-latest",
-]
+GEMINI_MODEL = "gemini-3.6-flash"
 
 
-def call_gemini(prompt, response_json=False, timeout=20):
-    """Executes prompt on Gemini Flash with automatic model fallback."""
+def call_gemini(prompt, response_json=False, timeout=90):
+    """Executes prompt strictly on gemini-3.6-flash with thinking model support and no fallback."""
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or GEMINI_API_KEY
     if not key:
         return None
-    for model in GEMINI_MODELS:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        body = {"contents": [{"parts": [{"text": prompt}]}]}
-        if response_json:
-            body["generationConfig"] = {"response_mime_type": "application/json"}
-        try:
-            resp = requests.post(url, params={"key": key}, json=body, timeout=timeout)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
-            else:
-                log.warning("Gemini %s returned %d: %s", model, resp.status_code, resp.text[:120])
-        except Exception as e:
-            log.warning("Gemini %s request failed: %s", model, e)
-            continue
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    gen_config = {}
+    if response_json:
+        gen_config["response_mime_type"] = "application/json"
+    gen_config["thinkingConfig"] = {"thinkingBudget": 1024}
+
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": gen_config
+    }
+    try:
+        resp = requests.post(url, params={"key": key}, json=body, timeout=timeout)
+        if resp.status_code == 200:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                for part in parts:
+                    if "text" in part and not part.get("thought", False):
+                        return part["text"]
+                if parts and "text" in parts[0]:
+                    return parts[0]["text"]
+        else:
+            log.warning("Gemini %s returned %d: %s", GEMINI_MODEL, resp.status_code, resp.text[:160])
+    except Exception as e:
+        log.warning("Gemini %s request failed: %s", GEMINI_MODEL, e)
     return None
 
 
@@ -364,39 +387,106 @@ def _fallback_speaker_analysis(transcript: str) -> dict:
     }
 
 
-def _filter_eligible_speakers(speakers_list, full_transcript):
-    """Keep only speakers who are registered backend profiles OR have spoken >= 100 words."""
-    if not isinstance(speakers_list, list):
-        return []
+def _load_all_turns():
+    """Chronological turns (from the in-memory store when available, else SQLite)
+    with each turn's resolved display speaker name attached."""
+    all_turns = []
+    if turn_store:
+        for to in sorted(turn_store.keys()):
+            entry = turn_store[to]
+            spk_name, _ = resolve_speaker_display({
+                "tagged_as": entry.get("tagged_as"),
+                "predicted_speaker": entry.get("predicted_speaker"),
+                "predicted_confidence": entry.get("predicted_confidence", 0.0),
+            })
+            if not spk_name:
+                raw_lbl = entry.get("speaker_label", "A")
+                spk_name = _session_cluster_map.get(raw_lbl, f"Speaker {raw_lbl}")
+            all_turns.append({
+                "turn_order": to,
+                "text": entry.get("text", ""),
+                "speaker": spk_name.strip()
+            })
+    else:
+        db_turns = db.get_all_turns()
+        for t in db_turns:
+            spk_name, _ = resolve_speaker_display({
+                "tagged_as": t.get("tagged_as"),
+                "predicted_speaker": t.get("predicted_speaker"),
+                "predicted_confidence": t.get("predicted_confidence", 0.0),
+            })
+            if not spk_name:
+                raw_lbl = t.get("speaker_label", "A")
+                spk_name = _session_cluster_map.get(raw_lbl, f"Speaker {raw_lbl}")
+            all_turns.append({
+                "turn_order": t["turn_order"],
+                "text": t.get("text", ""),
+                "speaker": spk_name.strip()
+            })
+    return all_turns
 
-    registered_names = set()
-    try:
-        registered_names = {p["name"].strip().lower() for p in db.get_all_profiles() if p.get("name")}
-    except Exception:
-        pass
 
-    spk_word_counts = {}
-    for line in full_transcript.split("\n"):
-        if ":" in line:
-            s_name, s_txt = line.split(":", 1)
-            s_name = s_name.strip().lower()
-            spk_word_counts[s_name] = spk_word_counts.get(s_name, 0) + len(s_txt.split())
+def _compute_speaker_eligibility(all_turns):
+    """Single backend source of truth for who currently qualifies to be shown
+    (registered profile OR >= 100 words spoken so far). The frontend must never
+    recompute this itself -- it should only render/prune based on what this
+    function (via the API responses below) says is eligible right now, so the
+    two sides can't drift out of sync from client-side lag.
 
-    filtered = []
-    for spk in speakers_list:
-        name = (spk.get("name") or "").strip()
-        name_lower = name.lower()
-        is_registered = name_lower in registered_names
-        word_count = spk_word_counts.get(name_lower, 0)
-        if is_registered or word_count >= 100:
-            filtered.append(spk)
-    return filtered
+    Returns:
+      eligible_user_ids: set of user_ids that currently qualify
+      speaker_turns: {user_id: {"name":.., "user_id":.., "turns": [...]}}
+      speaker_word_counts: {user_id: int}
+      user_id_map / canonical_names: name(lower) -> user_id / canonical name
+    """
+    registered_profiles = speaker_id_engine.get_users_detailed()
+    user_id_map = {p["name"].lower().strip(): p.get("user_id", f"usr_{p['name'].lower().replace(' ', '_')}") for p in registered_profiles}
+    canonical_names = {p["name"].lower().strip(): p["name"] for p in registered_profiles}
+
+    speaker_turns = {}
+    speaker_word_counts = {}
+    for t in all_turns:
+        spk = t["speaker"]
+        spk_lower = spk.lower().strip()
+        canon_name = canonical_names.get(spk_lower, spk)
+        u_id = user_id_map.get(spk_lower, f"usr_{re.sub(r'[^a-zA-Z0-9_]', '_', canon_name.lower())}")
+
+        if u_id not in speaker_turns:
+            speaker_turns[u_id] = {"name": canon_name, "user_id": u_id, "turns": []}
+            speaker_word_counts[u_id] = 0
+
+        speaker_turns[u_id]["turns"].append(t)
+        speaker_word_counts[u_id] += len((t["text"] or "").split())
+
+    eligible_user_ids = set()
+    for u_id, s_info in speaker_turns.items():
+        is_registered = s_info["name"].lower().strip() in user_id_map
+        if is_registered or speaker_word_counts[u_id] >= 100:
+            eligible_user_ids.add(u_id)
+
+    return eligible_user_ids, speaker_turns, speaker_word_counts, user_id_map, canonical_names
+
+
+def _filter_eligible_analysis(stored_analysis, eligible_user_ids):
+    """Return a copy of stored_analysis containing only currently-eligible speakers.
+    The full permanent history stays untouched in SQLite -- only what gets SENT
+    to the client on this response is filtered, so silent-but-eligible speakers
+    stay visible while never-eligible/removed ones never reach the frontend at all."""
+    speakers = stored_analysis.get("speakers", []) if isinstance(stored_analysis, dict) else []
+    filtered = [s for s in speakers if (s or {}).get("user_id") in eligible_user_ids]
+    out = dict(stored_analysis) if isinstance(stored_analysis, dict) else {"overall_summary": "", "speakers": []}
+    out["speakers"] = filtered
+    return out
 
 
 @app.route("/api/analyse", methods=["POST"])
 def api_analyse():
     """Legacy endpoint — redirects to live-intelligence."""
     return api_live_intelligence()
+
+
+_speaker_last_analyzed_turn: dict = {}
+_last_analyzed_global_turn: int = 0
 
 
 @app.route("/api/wordcloud", methods=["POST"])
@@ -407,70 +497,116 @@ def api_wordcloud():
 
 @app.route("/api/live-intelligence", methods=["POST"])
 def api_live_intelligence():
-    """Single unified Gemini call every 30 seconds.
-    Returns BOTH discussion topics (7-10 keywords) AND per-speaker analysis in one shot."""
+    """Incremental Gemini intelligence call.
+    Only sends speakers who have NEW speech activity since their last analysis,
+    merging their updated cards into SQLite while preserving silent speakers."""
+    global _speaker_last_analyzed_turn, _last_analyzed_global_turn
+
     data = request.get_json(force=True) or {}
     transcript = data.get("transcript", "").strip()
-    if not transcript:
-        return jsonify({"topics": [], "overall_summary": "", "speakers": []})
 
-    # Trim to last 200 lines for context efficiency
-    lines = transcript.split("\n")
-    if len(lines) > 200:
-        transcript = "\n".join(lines[-200:])
+    all_turns = _load_all_turns()
+    if not all_turns:
+        return jsonify({"topics": [], "overall_summary": "", "speakers": [], "words": []})
+
+    current_max_global_turn = max(t["turn_order"] for t in all_turns)
+
+    # Backend-only eligibility (registered OR >= 100 words). This is the single
+    # source of truth -- every response below is filtered through it, so the
+    # frontend never has to (and never does) recompute eligibility itself.
+    eligible_user_ids, speaker_turns, speaker_word_counts, user_id_map, canonical_names = _compute_speaker_eligibility(all_turns)
+
+    # Identify eligible speakers with NEW turns since their last analysis
+    active_speakers_data = []
+    for u_id in eligible_user_ids:
+        s_info = speaker_turns[u_id]
+        last_analyzed = _speaker_last_analyzed_turn.get(u_id, 0)
+        new_turns = [t for t in s_info["turns"] if t["turn_order"] > last_analyzed]
+
+        if new_turns:
+            recent_text = "\n".join([f"- {t['text']}" for t in new_turns[-15:]])
+            active_speakers_data.append({
+                "user_id": u_id,
+                "name": s_info["name"],
+                "total_words": speaker_word_counts[u_id],
+                "max_turn": max(t["turn_order"] for t in new_turns),
+                "recent_text": recent_text
+            })
+
+    # Check if we have new turns for Word Cloud discussion topics
+    new_global_turns = [t for t in all_turns if t["turn_order"] > _last_analyzed_global_turn]
+
+    # ZERO-WASTE GUARD: If no speaker has new turns AND no new global turns, return cached SQLite directly
+    if not active_speakers_data and not new_global_turns:
+        stored_analysis = db.get_meeting_meta("speaker_analysis", {"overall_summary": "", "speakers": []})
+        stored_words = db.get_meeting_meta("wordcloud", [])
+        filtered_analysis = _filter_eligible_analysis(stored_analysis, eligible_user_ids)
+        return jsonify({
+            "topics": [w[0] for w in stored_words] if stored_words else [],
+            "words": stored_words,
+            **filtered_analysis
+        })
+
+    # Build focused prompt for Gemini with ONLY active speakers + new dialogue
+    speakers_prompt_section = ""
+    for aspk in active_speakers_data:
+        speakers_prompt_section += (
+            f"\n[SPEAKER: {aspk['name']} | User ID: {aspk['user_id']}]\n"
+            f"Total Words Spoken: {aspk['total_words']}\n"
+            f"New Utterances:\n{aspk['recent_text']}\n"
+        )
+
+    recent_dialogue = "\n".join([f"{t['speaker']}: {t['text']}" for t in all_turns[-30:]])
 
     prompt = (
-        "You are an expert discourse intelligence analyst evaluating a live multi-speaker meeting.\n"
-        "Analyze this conversation transcript and return TWO things in a single JSON response:\n\n"
-        "═══ PART 1: DISCUSSION TOPICS ═══\n"
-        "Extract 7 to 10 concise domain-relevant discussion topics/keywords from the transcript.\n"
-        "Each topic must be a punchy 1-3 word phrase (e.g. 'AI Safety', 'Model Latency', 'Database Indexing').\n"
-        "STRICTLY FORBIDDEN: conversational filler phrases (e.g. 'There is lots', 'Hope it is').\n\n"
-        "═══ PART 2: SPEAKER ANALYSIS ═══\n"
-        "Analyze each speaker with complete intellectual honesty, objectivity, and realistic rigor.\n\n"
-        "CRITICAL SPEAKER INCLUSION RULE:\n"
-        "- ONLY generate a section for speakers who are named participants OR who have spoken at least 100 words.\n"
-        "- COMPLETELY OMIT short generic speakers (e.g. 'Speaker A' with only a few sentences).\n\n"
-        "CRITICAL EVALUATION GUIDELINES (DO NOT BE A PEOPLE-PLEASER):\n"
-        "- Be realistic, objective, and strict. Low marks (1.0 to 4.0) are fine for low-value contributions.\n"
-        "- High scores (8.0+) ONLY for concrete technical facts, actionable decisions, or deep domain expertise.\n\n"
-        "Return ONLY a valid JSON object matching this exact schema:\n"
+        "You are an expert discourse intelligence analyst evaluating an active multi-speaker meeting.\n"
+        "The following speakers have NEW speech activity in this interval:\n"
+        f"{speakers_prompt_section if speakers_prompt_section else 'Evaluate recent conversation topics.'}\n\n"
+        "Recent conversation context:\n"
+        f"{recent_dialogue}\n\n"
+        "Analyze these ACTIVE speakers and the latest discussion topics.\n"
+        "CRITICAL GUIDELINES:\n"
+        "- Generate a speaker analysis item ONLY for the active speakers listed above with their exact 'user_id' and 'name'.\n"
+        "- Extract 7 to 10 punchy discussion topics (1-3 words each) reflecting the latest dialogue.\n"
+        "- Provide an updated 2-3 sentence overall meeting summary.\n\n"
+        "Return ONLY a valid JSON object matching this schema:\n"
         "{\n"
         '  "topics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6", "Topic 7"],\n'
-        '  "overall_summary": "2-3 sentence meeting summary",\n'
+        '  "overall_summary": "Updated 2-3 sentence meeting summary",\n'
         '  "speakers": [\n'
         "    {\n"
+        '      "user_id": "usr_example",\n'
         '      "name": "Speaker Name",\n'
         '      "score": 8.5,\n'
-        '      "score_reason": "1-sentence honest explanation",\n'
-        '      "summary": "Objective assessment of their contribution",\n'
+        '      "score_reason": "1-sentence explanation",\n'
+        '      "summary": "Assessment of their contributions",\n'
         '      "key_points": ["point 1", "point 2"],\n'
-        '      "keywords": ["keyword1", "keyword2"]\n'
+        '      "keywords": ["keyword 1", "keyword 2"]\n'
         "    }\n"
         "  ]\n"
-        "}\n\n"
-        f"Transcript:\n{transcript}"
+        "}"
     )
 
-    raw_json = call_gemini(prompt, response_json=True, timeout=25)
-
-    # Fallback: retry without forced JSON mime type
+    raw_json = call_gemini(prompt, response_json=True, timeout=90)
     if not raw_json:
-        raw_json = call_gemini(prompt, timeout=25)
+        raw_json = call_gemini(prompt, timeout=90)
+
+    stored_analysis = db.get_meeting_meta("speaker_analysis", {"overall_summary": "", "speakers": []})
+    existing_speaker_map = {}
+    for s in stored_analysis.get("speakers", []):
+        sid = s.get("user_id") or f"usr_{re.sub(r'[^a-zA-Z0-9_]', '_', s.get('name', '').lower())}"
+        existing_speaker_map[sid] = s
 
     if raw_json:
         try:
             cleaned = raw_json.strip()
-            if cleaned.startswith("```json"):
-                cleaned = cleaned[7:]
-            if cleaned.startswith("```"):
-                cleaned = cleaned[3:]
-            if cleaned.endswith("```"):
-                cleaned = cleaned[:-3]
+            if cleaned.startswith("```json"): cleaned = cleaned[7:]
+            if cleaned.startswith("```"): cleaned = cleaned[3:]
+            if cleaned.endswith("```"): cleaned = cleaned[:-3]
             parsed = json.loads(cleaned.strip())
 
             if isinstance(parsed, dict):
-                # ── Process topics into weighted word cloud ──
+                # ── 1. Update Word Cloud topics ──
                 topics = parsed.get("topics", [])
                 if isinstance(topics, list) and len(topics) > 0:
                     topic_weights = [48, 42, 38, 32, 28, 25, 22, 18, 15, 12]
@@ -481,35 +617,57 @@ def api_live_intelligence():
                     if words:
                         db.set_meeting_meta("wordcloud", words)
                         broadcast_sse("wordcloud_updated", {"words": words})
-                        parsed["words"] = words
 
-                # ── Process speaker analysis ──
-                if "speakers" in parsed:
-                    parsed["speakers"] = _filter_eligible_speakers(parsed.get("speakers", []), transcript)
-                    db.set_meeting_meta("speaker_analysis", {
-                        "overall_summary": parsed.get("overall_summary", ""),
-                        "speakers": parsed["speakers"]
-                    })
-                    broadcast_sse("analysis_updated", {
-                        "overall_summary": parsed.get("overall_summary", ""),
-                        "speakers": parsed["speakers"]
-                    })
+                # ── 2. Incrementally merge active speakers ──
+                # Only accept speakers the backend itself flagged as active/eligible
+                # this cycle -- never let Gemini's output add a name to permanent
+                # storage that the backend didn't ask it to analyze.
+                active_ids_this_cycle = {aspk["user_id"] for aspk in active_speakers_data}
+                new_speakers = parsed.get("speakers", [])
+                for n_spk in new_speakers:
+                    n_uid = n_spk.get("user_id") or user_id_map.get(n_spk.get("name", "").lower().strip())
+                    if not n_uid:
+                        n_uid = f"usr_{re.sub(r'[^a-zA-Z0-9_]', '_', n_spk.get('name', '').lower())}"
+                    if n_uid not in active_ids_this_cycle:
+                        continue
+                    n_spk["user_id"] = n_uid
+                    existing_speaker_map[n_uid] = n_spk
 
-                return jsonify(parsed)
+                if parsed.get("overall_summary"):
+                    stored_analysis["overall_summary"] = parsed["overall_summary"]
+
+                # Persist the FULL permanent history (all speakers ever analyzed,
+                # active or silent) -- eligibility filtering only happens on the
+                # way out to the client, never on the way into storage.
+                stored_analysis["speakers"] = list(existing_speaker_map.values())
+                db.set_meeting_meta("speaker_analysis", stored_analysis)
+
+                # Mark active speakers as analyzed up to their max turn
+                for aspk in active_speakers_data:
+                    _speaker_last_analyzed_turn[aspk["user_id"]] = aspk["max_turn"]
+                _last_analyzed_global_turn = current_max_global_turn
+
+                filtered_analysis = _filter_eligible_analysis(stored_analysis, eligible_user_ids)
+                broadcast_sse("analysis_updated", filtered_analysis)
+                return jsonify({
+                    "topics": topics,
+                    "words": db.get_meeting_meta("wordcloud", []),
+                    **filtered_analysis
+                })
         except Exception:
             pass
 
-    # ── Fallback: local extraction ──
+    # Fallback to local extraction if Gemini was unreachable
     fallback_words = extract_local_wordcloud(transcript)
-    fallback_analysis = _fallback_speaker_analysis(transcript)
-    db.set_meeting_meta("wordcloud", fallback_words)
-    db.set_meeting_meta("speaker_analysis", fallback_analysis)
-    broadcast_sse("wordcloud_updated", {"words": fallback_words})
-    broadcast_sse("analysis_updated", fallback_analysis)
+    if fallback_words:
+        db.set_meeting_meta("wordcloud", fallback_words)
+        broadcast_sse("wordcloud_updated", {"words": fallback_words})
+
+    filtered_analysis = _filter_eligible_analysis(stored_analysis, eligible_user_ids)
     return jsonify({
-        "words": fallback_words,
+        "words": db.get_meeting_meta("wordcloud", fallback_words),
         "topics": [w[0] for w in fallback_words],
-        **fallback_analysis
+        **filtered_analysis
     })
 
 
@@ -561,10 +719,17 @@ def extract_local_wordcloud(transcript: str):
 
 @app.route("/api/meeting-analytics", methods=["GET"])
 def api_meeting_analytics():
-    """Returns persistent analytics (wordcloud, analysis summary) directly from SQLite DB."""
+    """Returns persistent analytics (wordcloud, analysis summary) from SQLite DB,
+    filtered through the same backend-only eligibility check as /api/live-intelligence
+    so a page reload/reconnect can never show a stale or ineligible speaker card."""
+    stored_analysis = db.get_meeting_meta("speaker_analysis", {})
+    if isinstance(stored_analysis, dict) and stored_analysis.get("speakers"):
+        all_turns = _load_all_turns()
+        eligible_user_ids, *_ = _compute_speaker_eligibility(all_turns)
+        stored_analysis = _filter_eligible_analysis(stored_analysis, eligible_user_ids)
     return jsonify({
         "wordcloud": db.get_meeting_meta("wordcloud", []),
-        "analysis": db.get_meeting_meta("speaker_analysis", {})
+        "analysis": stored_analysis
     })
 
 
@@ -731,7 +896,10 @@ def api_clear_voiceprints():
 def api_clear_turns():
     """Clear ONLY turns and sentence transcripts.
     PRESERVES all registered user profiles, avatars, and voiceprint centroids in memory and SQLite."""
+    global _last_analyzed_global_turn
     turn_store.clear()
+    _speaker_last_analyzed_turn.clear()
+    _last_analyzed_global_turn = 0
     db.clear_all_turns()
     db.clear_meeting_meta()
     broadcast_sse("turns_cleared", {})
@@ -743,9 +911,11 @@ def api_clear_turns():
 
 @app.route("/api/clear-all", methods=["POST"])
 def api_clear_all():
-    global _session_cluster_map
+    global _session_cluster_map, _last_analyzed_global_turn
     turn_store.clear()
     _session_cluster_map.clear()
+    _speaker_last_analyzed_turn.clear()
+    _last_analyzed_global_turn = 0
     speaker_id_engine.clear_session()
     db.clear_all_profiles()
     db.clear_all_turns()

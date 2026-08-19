@@ -9,6 +9,7 @@ import base64
 import json
 import logging
 import os
+import re
 import sqlite3
 import threading
 from typing import Dict, List, Optional
@@ -50,6 +51,7 @@ def init_db():
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS profiles (
+                user_id TEXT,
                 name TEXT PRIMARY KEY,
                 avatar_b64 TEXT,
                 company_name TEXT,
@@ -75,6 +77,10 @@ def init_db():
             pass
         try:
             conn.execute("ALTER TABLE profiles ADD COLUMN company_name TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE profiles ADD COLUMN user_id TEXT")
         except sqlite3.OperationalError:
             pass
         conn.commit()
@@ -247,31 +253,38 @@ def upsert_profile(
     company_name: Optional[str] = None,
     samples_count: int = 0,
     centroid_list: Optional[list] = None,
+    user_id: Optional[str] = None,
 ):
+    if not user_id:
+        clean_slug = re.sub(r'[^a-zA-Z0-9_]', '_', name.lower().strip())
+        user_id = f"usr_{clean_slug}"
     centroid_json = json.dumps(centroid_list) if centroid_list is not None else None
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT INTO profiles (name, avatar_b64, company_name, samples_count, centroid_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO profiles (user_id, name, avatar_b64, company_name, samples_count, centroid_json)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(name) DO UPDATE SET
+                user_id = COALESCE(excluded.user_id, profiles.user_id),
                 avatar_b64 = COALESCE(excluded.avatar_b64, profiles.avatar_b64),
                 company_name = COALESCE(excluded.company_name, profiles.company_name),
                 samples_count = excluded.samples_count,
                 centroid_json = COALESCE(excluded.centroid_json, profiles.centroid_json)
         """,
-            (name, avatar_b64, company_name, samples_count, centroid_json),
+            (user_id, name, avatar_b64, company_name, samples_count, centroid_json),
         )
         conn.commit()
 
 
 def get_all_profiles() -> List[dict]:
     with get_conn() as conn:
-        cur = conn.execute("SELECT name, avatar_b64, company_name, samples_count, centroid_json FROM profiles ORDER BY name ASC")
+        cur = conn.execute("SELECT user_id, name, avatar_b64, company_name, samples_count, centroid_json FROM profiles ORDER BY name ASC")
         rows = cur.fetchall()
         res = []
         for r in rows:
             d = dict(r)
+            if not d.get("user_id"):
+                d["user_id"] = f"usr_{re.sub(r'[^a-zA-Z0-9_]', '_', (d.get('name') or '').lower().strip())}"
             d["has_voiceprint"] = bool(d["centroid_json"])
             d["centroid"] = json.loads(d["centroid_json"]) if d["centroid_json"] else None
             del d["centroid_json"]
