@@ -1415,6 +1415,10 @@
             }
             scrollBoxToBottom(box.bodyEl);
             entry.speakerId = speakerId;
+            // The box this line just left may now be empty (it existed only to host
+            // this one interim line). Clean it up immediately instead of waiting for
+            // the next sync tick — that's the ghost-box race.
+            cleanEmptySpeakerBoxes();
           }
         }
 
@@ -1520,6 +1524,13 @@
           // Upload turn audio to backend (single source of truth: backend performs ECAPA-TDNN ID and persists to SQLite DB)
           uploadTurnAudioToBackend(segTurnOrder, segText, rawSegSpk, segAudioB64);
         });
+
+        // Word-level diarization can resolve a segment to a DIFFERENT speaker box than the
+        // one the interim line was originally created in (see the reparenting above). That
+        // leaves the original box with zero children. Clean it up right here instead of
+        // relying on the next sync tick, which is what let ghost boxes persist across a
+        // dropped SSE connection or a backgrounded tab.
+        cleanEmptySpeakerBoxes();
 
         setInterimText('');
 
@@ -1660,11 +1671,9 @@
         const wsParams = new URLSearchParams({
           sample_rate: '16000',
           speech_model: 'universal-3-5-pro',
-          language_code: 'en',
-          language_codes: 'en',
           mode: 'balanced',
+          language_code: 'en',
           speaker_labels: 'true',
-          max_speakers: '4',
           token: tokenData.token
         });
         aaiSocket = new WebSocket(`wss://streaming.assemblyai.com/v3/ws?${wsParams.toString()}`);
@@ -2189,15 +2198,20 @@
         // 3. Render or update every turn from the database
         sorted.forEach(t => {
           const rawSpeaker = t.speaker_label || 'A';
+          // 30% is the single tentative-tier floor shared with app.py's resolve_speaker_display()
+          // and admin.html. Below it a turn is unassigned and only shows under "Speaker X" until
+          // the backend is confident enough (or a human tags it).
           if (t.tagged_as) {
             sessionClusterMap[rawSpeaker] = t.tagged_as;
-          } else if (t.predicted_speaker && (t.predicted_confidence || 0) >= 35.0) {
+          } else if (t.predicted_speaker && (t.predicted_confidence || 0) >= 30.0) {
             sessionClusterMap[rawSpeaker] = t.predicted_speaker;
           }
 
           const turnOrder = Number(t.turn_order);
           const conf = t.predicted_confidence || 0;
-          const assignedSpeaker = (t.tagged_as || (conf > 15.0 ? t.predicted_speaker : null) || sessionClusterMap[rawSpeaker] || ('Speaker ' + rawSpeaker)).trim();
+          // Prefer the server-resolved name (single source of truth) when present; fall back to the
+          // local 30% gate + sessionClusterMap inheritance for older server responses.
+          const assignedSpeaker = (t.resolved_speaker_name || t.tagged_as || (conf >= 30.0 ? t.predicted_speaker : null) || sessionClusterMap[rawSpeaker] || ('Speaker ' + rawSpeaker)).trim();
 
           const targetBox = getOrCreateSpeakerBox(assignedSpeaker);
           const targetSpeakerId = targetBox.boxEl.id;

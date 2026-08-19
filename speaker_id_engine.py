@@ -127,7 +127,9 @@ def create_user(speaker_name: str, avatar_b64: Optional[str] = None, company_nam
 
 def set_user_avatar(speaker_name: str, avatar_b64: str) -> dict:
     """Set or update a user's profile avatar image (base64 data URL)."""
-    name = speaker_name.strip()
+    lower_map = {k.lower().strip(): k for k in _profiles.keys()}
+    canon_name = lower_map.get((speaker_name or "").lower().strip(), speaker_name)
+    name = (canon_name or "").strip()
     if not name:
         raise ValueError("Speaker name cannot be empty")
     if name not in _profiles:
@@ -147,7 +149,9 @@ def set_user_avatar(speaker_name: str, avatar_b64: str) -> dict:
 
 def delete_user(speaker_name: str) -> dict:
     """Delete a user profile and their voiceprint centroid."""
-    name = speaker_name.strip()
+    lower_map = {k.lower().strip(): k for k in _profiles.keys()}
+    canon_name = lower_map.get((speaker_name or "").lower().strip(), speaker_name)
+    name = (canon_name or "").strip()
     if name in _profiles:
         del _profiles[name]
         log.info("Deleted user profile: '%s'", name)
@@ -200,8 +204,11 @@ def sync_all_user_centroids(speaker_to_embeddings: Dict[str, List[torch.Tensor]]
 
 def update_user_centroid(name: str, embeddings: list):
     """Update a single user's centroid from a list of embeddings."""
-    if name not in _profiles:
+    lower_map = {k.lower().strip(): k for k in _profiles.keys()}
+    canon_name = lower_map.get((name or "").lower().strip(), name)
+    if canon_name not in _profiles:
         return
+    name = canon_name
 
     enrolled = _profiles[name].get("enrolled_centroid")
 
@@ -286,7 +293,7 @@ def identify_embedding(test_emb: torch.Tensor, threshold: float = 0.50) -> dict:
 
     best_name = max(scores, key=scores.get)
     best_score = scores[best_name]
-    conf_pct = round(min(99.9, max(1.0, (best_score - 0.2) / 0.60 * 100)), 1) if best_score > 0.25 else 10.0
+    conf_pct = round(min(99.9, max(1.0, (best_score - 0.2) / 0.60 * 100)), 1) if best_score > 0.20 else round(max(1.0, best_score * 50), 1)
     winner = best_name if best_score >= threshold else None
 
     return {
@@ -322,6 +329,23 @@ def get_users_detailed() -> List[dict]:
 def get_users() -> List[str]:
     """Return list of user names."""
     return list(_profiles.keys())
+
+
+def reset_voice_model_centroids():
+    """Reset all learned voice model centroids back to clean state, preserving user profiles, names, avatars, and companies."""
+    for name, data in _profiles.items():
+        data["embeddings"] = []
+        data["centroid"] = None
+        data["enrolled_centroid"] = None
+        db.upsert_profile(
+            name=name,
+            avatar_b64=data.get("avatar_b64"),
+            company_name=data.get("company_name"),
+            samples_count=0,
+            centroid_list=None,
+        )
+    log.info("Reset voice model centroids for all profiles (profiles preserved).")
+    return {"status": "voice_model_reset", "users_count": len(_profiles)}
 
 
 def clear_session():

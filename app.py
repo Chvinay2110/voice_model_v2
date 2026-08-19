@@ -23,6 +23,9 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 import db
 import speaker_id_engine
 from assemblyai_engine import create_temporary_token
+from audio_utils import decode_pcm_base64, clean_audio_for_speaker_id
+
+_decode_pcm_base64 = decode_pcm_base64
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -31,6 +34,60 @@ GEMINI_API_KEY = "AQ.Ab8RN6JhC0axQXrkr8hXPXcc68PT--FFO_8Srqk0blRjepHMFg"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("app")
+
+# ── Single source of truth for speaker-confidence tiers ──────────────────────
+# >= CONF_CONFIRMED   -> auto-tagged permanently (tagged_as written to DB), shown GREEN
+# CONF_TENTATIVE..70   -> shown as a tentative/pending badge (BLUE/PURPLE) with the % on it,
+#                        never persisted as tagged_as until it crosses CONFIRMED or a human tags it
+# <  CONF_TENTATIVE    -> unassigned, shown in its own "Speaker X" bucket everywhere
+CONF_CONFIRMED = 70.0
+CONF_TENTATIVE = 30.0
+
+
+def resolve_speaker_display(entry):
+    """The one place that decides what name+tier a turn should display as.
+    Every UI (admin.html, index.html) should render this verbatim instead of
+    re-implementing its own threshold logic. Unlike the old version, this
+    NEVER hides a predicted name just because confidence is low -- it always
+    returns whatever name+tier we have. Tier only controls color/auto-tag
+    behavior, not visibility."""
+    tagged = entry.get("tagged_as")
+    if tagged:
+        return tagged, "confirmed"
+    pred = entry.get("predicted_speaker")
+    conf = entry.get("predicted_confidence", 0.0) or 0.0
+    if pred and conf >= CONF_CONFIRMED:
+        return pred, "confirmed"
+    if pred and conf >= CONF_TENTATIVE:
+        return pred, "tentative"
+    if pred:
+        return pred, "weak"
+    return None, "unassigned"
+
+
+def _resolve_prediction(id_res, lbl):
+    """Picks the best-guess speaker for a turn and returns the percentage confidence score."""
+    id_res = id_res or {}
+    scores = id_res.get("scores") or {}
+    winner = id_res.get("winner")
+    raw_conf = float(id_res.get("confidence_pct", 0.0) or 0.0)
+    top_match = id_res.get("top_match")
+
+    if winner:
+        predicted_speaker = winner
+        predicted_confidence = raw_conf
+    elif top_match:
+        predicted_speaker = top_match
+        predicted_confidence = raw_conf
+    elif lbl and lbl in _session_cluster_map:
+        predicted_speaker = _session_cluster_map[lbl]
+        predicted_confidence = 30.0
+    else:
+        predicted_speaker = None
+        predicted_confidence = 0.0
+
+    return predicted_speaker, round(float(predicted_confidence), 1), bool(winner), scores
+
 
 app = Flask(__name__, static_folder=None)
 
@@ -49,46 +106,6 @@ def broadcast_sse(event_type: str, data: dict = None):
             if q in _sse_subscribers:
                 _sse_subscribers.remove(q)
 
-
-def init_app_state():
-    """Load profiles and recent turns from SQLite into memory on startup."""
-    speaker_id_engine.init_profiles_from_db()
-    db_turns = db.get_all_turns()
-    for t in db_turns:
-        to = t["turn_order"]
-        emb = None
-        # Fast path: load cached embedding from DB
-        if t.get("embedding_json"):
-            try:
-                emb = torch.tensor(json.loads(t["embedding_json"]), dtype=torch.float32)
-            except Exception:
-                pass
-        # Slow fallback: extract from audio (one-time migration for legacy turns)
-        if emb is None and t.get("audio_b64"):
-            try:
-                pcm = _decode_pcm_base64(t["audio_b64"])
-                if len(pcm) >= int(0.3 * 16000):
-                    emb = speaker_id_engine.extract_embedding(pcm)
-                    # Cache for future restarts
-                    db.update_turn_embedding(to, json.dumps(emb.tolist()))
-            except Exception:
-                pass
-
-        turn_store[to] = {
-            "audio_b64": t.get("audio_b64"),
-            "embedding": emb,
-            "text": t.get("text", ""),
-            "speaker_label": t.get("speaker_label", "A"),
-            "predicted_speaker": t.get("predicted_speaker"),
-            "predicted_confidence": t.get("predicted_confidence", 0.0),
-            "scores": {},
-            "tagged_as": t.get("tagged_as"),
-            "is_mixed": bool(t.get("is_mixed", 0)),
-        }
-    log.info("Initialized app with %d turns from database.", len(turn_store))
-
-
-init_app_state()
 
 
 @app.after_request
@@ -125,9 +142,14 @@ def api_stream_events():
         try:
             yield f"event: connected\ndata: {json.dumps({'status': 'connected'})}\n\n"
             while True:
-                msg = q.get()
-                yield msg
-        except GeneratorExit:
+                try:
+                    msg = q.get(timeout=25.0)
+                    yield msg
+                except queue.Empty:
+                    yield ": keepalive\n\n"
+        except (GeneratorExit, Exception):
+            pass
+        finally:
             if q in _sse_subscribers:
                 _sse_subscribers.remove(q)
 
@@ -211,28 +233,42 @@ MASTER_STOPWORDS = {
 GENERIC_BAN_WORDS = MASTER_STOPWORDS
 
 
+_FILLER_PREFIXES = (
+    "so ", "well ", "basically ", "actually ", "i mean ", "you know ", "like ",
+    "um ", "uh ", "okay so ", "right so ", "and so ", "and um ", "so basically ",
+)
+
+
 def _synthesize_takeaway(sentence: str) -> str:
-    """Derives what the speaker meant rather than echoing verbatim raw speech."""
+    """Extractive takeaway: cleans a raw transcript sentence into a presentable
+    point without inventing meaning that isn't in the source. Deliberately has
+    zero domain-specific knowledge -- it has to work on ANY transcript topic,
+    not just the ones it happened to be tested against."""
     s = sentence.strip()
+    if not s:
+        return s
+
+    # Strip conversational filler from the front (fillers can stack, so loop)
     s_lower = s.lower()
+    changed = True
+    while changed:
+        changed = False
+        for filler in _FILLER_PREFIXES:
+            if s_lower.startswith(filler):
+                s = s[len(filler):].lstrip()
+                s_lower = s.lower()
+                changed = True
 
-    if re.search(r'\b(virtuous|values|goals)\b', s_lower) and re.search(r'\b(hope|track|confident)\b', s_lower):
-        return "Emphasized that AI value alignment and virtuous behavior are currently unverified hopes rather than guaranteed safeguards."
-    if re.search(r'\b(lie|lying|pretend|deceiv)\b', s_lower):
-        return "Highlighted that current AI systems exhibit deceptive behaviors, complicating alignment and trust."
-    if re.search(r'\b(super\s*intelligent|inherently difficult)\b', s_lower):
-        return "Stressed the fundamental difficulty of ensuring superintelligent systems adhere to intended human virtues."
-    if re.search(r'\b(new species|ruling|extinct|outcompeted)\b', s_lower):
-        return "Warned of catastrophic existential risks, including humanity being outcompeted or replaced by artificial species."
-    if re.search(r'\b(database|sql|wal|index|indexing)\b', s_lower):
-        return "Proposed database optimization using WAL mode and efficient indexing for high concurrency."
-    if re.search(r'\b(ecapa|speechbrain|speaker|embedding)\b', s_lower):
-        return "Recommended deploying ECAPA-TDNN neural embeddings for robust acoustic speaker identification."
+    if not s:
+        return sentence.strip()
 
-    # Generic semantic condensing: extract meaningful core nouns and domain essence
-    clean_words = [w for w in re.findall(r'\b[A-Za-z]{3,}\b', s) if w.lower() not in MASTER_STOPWORDS]
-    if len(clean_words) >= 3:
-        return f"Addressed core considerations regarding {' '.join(w.capitalize() for w in clean_words[:3])}."
+    # Collapse inline filler words without destroying real content
+    s = re.sub(r'\b(um+|uh+)\b', '', s, flags=re.IGNORECASE)
+    s = re.sub(r'\s{2,}', ' ', s).strip()
+
+    s = s[0].upper() + s[1:] if len(s) > 1 else s.upper()
+    if not s.endswith(('.', '!', '?')):
+        s += '.'
     return s
 
 
@@ -274,17 +310,25 @@ def _fallback_speaker_analysis(transcript: str) -> dict:
         word_counts = Counter(words)
         top_keywords = [w.capitalize() for w, _ in word_counts.most_common(5)]
 
-        # Sentence extraction and semantic synthesis for takeaways
-        sentences = [s.strip() for s in re.split(r"[.!?]+", all_text) if len(s.strip().split()) >= 4]
+        # Sentence extraction: rank by informativeness (keyword density) instead
+        # of just taking the first N, so the most substantive points surface
+        # regardless of what topic the meeting was actually about.
+        raw_sentences = [s.strip() for s in re.split(r"[.!?]+", all_text) if len(s.strip().split()) >= 4]
+        scored_sentences = []
+        for idx, s in enumerate(raw_sentences):
+            s_words = re.findall(r"\b[A-Za-z]{3,}\b", s.lower())
+            score = sum(word_counts.get(w, 0) for w in s_words if w not in MASTER_STOPWORDS)
+            scored_sentences.append((score, idx, s))
+        top_sentences = sorted(scored_sentences, key=lambda x: x[0], reverse=True)[:4]
+        top_sentences.sort(key=lambda x: x[1])  # restore chronological order
+
         synthesized_takeaways = []
         seen_takeaways = set()
-        for s in sentences:
+        for _, _, s in top_sentences:
             tw = _synthesize_takeaway(s)
             if tw and tw not in seen_takeaways:
                 seen_takeaways.add(tw)
                 synthesized_takeaways.append(tw)
-            if len(synthesized_takeaways) >= 4:
-                break
 
         # Check for substantive vocabulary vs short filler / gibberish
         unique_words = set(words)
@@ -470,83 +514,45 @@ def api_live_intelligence():
 
 
 def extract_local_wordcloud(transcript: str):
-    """Extracts high-level substantive domain topics and macro-concepts."""
+    """Frequency-ranked bigram/keyword topic extraction. Deliberately
+    domain-agnostic: this is the offline fallback used when Gemini is
+    unreachable, so it has to work for any meeting topic, not just the ones
+    it happened to be tested against."""
     text_clean = re.sub(r'^[A-Za-z0-9_\s]+:\s*', '', transcript, flags=re.MULTILINE)
-
-    stopwords = {
-        'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'aren', 'as', 'at',
-        'be', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by', 'can', 'could', 'did',
-        'didn', 'do', 'does', 'doing', 'don', 'down', 'during', 'each', 'few', 'for', 'from', 'further', 'had', 'hadn',
-        'has', 'hasn', 'have', 'haven', 'having', 'he', 'her', 'here', 'hers', 'herself', 'him', 'himself', 'his', 'how',
-        'i', 'if', 'in', 'into', 'is', 'isn', 'it', 'its', 'itself', 'just', 'me', 'more', 'most', 'my', 'myself',
-        'no', 'nor', 'not', 'now', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'our', 'ours', 'ourselves', 'out',
-        'over', 'own', 'same', 'she', 'should', 'so', 'some', 'such', 'than', 'that', 'the', 'their', 'theirs', 'them',
-        'themselves', 'then', 'there', 'these', 'they', 'this', 'those', 'through', 'to', 'too', 'under', 'until', 'up',
-        'very', 'was', 'wasn', 'we', 'were', 'weren', 'what', 'when', 'where', 'which', 'while', 'who', 'whom', 'why',
-        'will', 'with', 'would', 'you', 'your', 'yours', 'yourself', 'yourselves',
-        'etc', 'scary', 'lots', 'sort', 'kind', 'like', 'really', 'actually', 'basically', 'yeah', 'okay', 'um', 'uh',
-        'right', 'fact', 'example', 'something', 'anything', 'nothing', 'someone', 'anyone', 'everyone', 'everything',
-        'else', 'point', 'think', 'know', 'tell', 'said', 'say', 'saying', 'told', 'see', 'look',
-        'going', 'went', 'gone', 'make', 'made', 'making', 'problem', 'problems', 'thing', 'things', 'reason', 'reasons',
-        'way', 'ways', 'possibility', 'possibilities', 'worried', 'worry', 'totally', 'achieve', 'track', 'ruling',
-        'end', 'ended', 'instead', 'past', 'also', 'even', 'open', 'secret', 'hope', 'solve', 'solved', 'pretend',
-        'people', 'human', 'humans', 'world', 'current', 'often', 'many', 'much', 'big', 'small', 'high', 'low',
-        'good', 'bad', 'difficult', 'easy', 'possible', 'impossible', 'confident', 'evidence', 'arguments',
-        'let', 'take', 'come', 'came', 'give', 'gave', 'want', 'wanted', 'need', 'needed', 'try', 'tried', 'trying',
-        'start', 'started', 'part', 'whole', 'entire', 'mean', 'means', 'meant', 'lot', 'little', 'bit', 'sure'
-    }
-
-    domain_rules = [
-        (r'\b(ai|artificial intelligence)\s+(industry|safety|alignment|models|systems|risk|risks|capabilities)\b', lambda m: f"{m.group(1).upper()} {m.group(2).capitalize()}"),
-        (r'\b(super\s*intelligent|superintelligence)\s*(ai|systems)?\b', lambda m: 'Superintelligent AI'),
-        (r'\b(values|virtues)\s+(and\s+)?(virtues|values|goals)\b', lambda m: 'Values & Alignment'),
-        (r'\b(extinct|extinction)\s*(species|risk)?\b', lambda m: 'Extinction Risk'),
-        (r'\b(new\s+species)\b', lambda m: 'New Species Creation'),
-        (r'\b(lie|lying|deception|deceive|deceptive)\b', lambda m: 'AI Deception Risk'),
-        (r'\b(goals?|intentions?)\s+(and\s+)?(values?)\b', lambda m: 'AI Goal Alignment'),
-        (r'\b(outcompeted|compete|competition|replace|replacement)\b', lambda m: 'Human Replacement Risk'),
-        (r'\b(database|sql|sqlite|indexing|queries|query)\b', lambda m: 'Database Architecture'),
-        (r'\b(speech|speechbrain|speaker|voiceprint|embedding|embeddings)\b', lambda m: 'Voice Identification'),
-        (r'\b(machine learning|neural network|neural nets|deep learning)\b', lambda m: 'Machine Learning Models'),
-        (r'\b(performance|latency|concurrency|multithreading|threads)\b', lambda m: 'Performance & Concurrency')
-    ]
-
-    found_topics = []
-    for pattern, fn in domain_rules:
-        for match in re.finditer(pattern, text_clean, re.I):
-            val = fn(match)
-            if val not in found_topics:
-                found_topics.append(val)
-
-    # Substantive 2-word phrase extraction bounded strictly within sentences
     sentences = re.split(r'[.!?\n]+', text_clean)
+
+    # Bigrams bounded strictly within sentences, plus unigram frequency as
+    # a fill-in source -- both purely frequency-driven, no topic hardcoding.
     phrase_counts = Counter()
+    word_counts = Counter()
 
     for s in sentences:
         words = [w.strip('.,!?:;"\'()[]{}').lower() for w in s.split()]
         words = [re.sub(r"['’](s|re|ve|ll|d|m|t)$", '', w) for w in words]
-        words = [w for w in words if w and len(w) > 2 and w not in stopwords and w not in GENERIC_BAN_WORDS]
+        words = [w for w in words if w and len(w) > 2 and w not in GENERIC_BAN_WORDS]
+
+        for w in words:
+            if len(w) > 3:
+                word_counts[w] += 1
 
         for i in range(len(words) - 1):
             w1, w2 = words[i], words[i + 1]
             if w1 != w2:
                 phrase_counts[f"{w1.capitalize()} {w2.capitalize()}"] += 1
 
-    for phrase, count in phrase_counts.most_common(8):
-        if phrase not in found_topics and not any(phrase.lower() in t.lower() for t in found_topics):
+    found_topics = []
+    for phrase, _ in phrase_counts.most_common(10):
+        if not any(phrase.lower() in t.lower() or t.lower() in phrase.lower() for t in found_topics):
             found_topics.append(phrase)
 
-    # Fallback to substantive domain nouns if needed
-    if len(found_topics) < 5:
-        all_words = []
-        for s in sentences:
-            wds = [w.strip('.,!?:;"\'()[]{}').lower() for w in s.split()]
-            wds = [re.sub(r"['’](s|re|ve|ll|d|m|t)$", '', w) for w in wds]
-            all_words.extend([w for w in wds if w and len(w) > 3 and w not in stopwords and w not in GENERIC_BAN_WORDS])
-        for w, _ in Counter(all_words).most_common(6):
-            cap = w.capitalize()
-            if cap not in found_topics and not any(w in t.lower() for t in found_topics):
-                found_topics.append(cap)
+    # Fill remaining slots with high-frequency single words not already covered
+    if len(found_topics) < 6:
+        for w, _ in word_counts.most_common(10):
+            if any(w in t.lower() for t in found_topics):
+                continue
+            found_topics.append(w.capitalize())
+            if len(found_topics) >= 8:
+                break
 
     weights = [48, 38, 32, 26, 22, 18, 15, 14, 13, 12]
     return [[topic, weights[min(idx, len(weights) - 1)]] for idx, topic in enumerate(found_topics[:10])]
@@ -580,12 +586,6 @@ def api_set_recording_state():
 
 
 # ── Speaker ID & Turn Endpoints ──────────────────────────────────────────────
-
-
-def _decode_pcm_base64(b64_str):
-    raw_bytes = base64.b64decode(b64_str)
-    pcm_int16 = np.frombuffer(raw_bytes, dtype=np.int16)
-    return pcm_int16.astype(np.float32) / 32768.0
 
 
 @app.route("/api/identify-turn", methods=["POST"])
@@ -694,6 +694,25 @@ def api_upload_avatar():
         return jsonify({"error": str(exc)}), 500
 
 
+@app.route("/api/reset-voice-model", methods=["POST"])
+def api_reset_voice_model():
+    """Reset ONLY the voice model centroid learnings across all profiles.
+    PRESERVES all user profiles (names, avatars, companies) and all turn text transcripts."""
+    global _session_cluster_map
+    res = speaker_id_engine.reset_voice_model_centroids()
+    for entry in turn_store.values():
+        entry["tagged_as"] = None
+        entry["predicted_speaker"] = None
+        entry["predicted_confidence"] = 0.0
+        entry["scores"] = {}
+    db.clear_all_turn_tags()
+    _session_cluster_map.clear()
+    _recalculate_turn_predictions()
+    broadcast_sse("users_updated", {})
+    broadcast_sse("turns_updated", {})
+    return jsonify(res)
+
+
 @app.route("/api/clear-voiceprints", methods=["POST"])
 def api_clear_voiceprints():
     res = speaker_id_engine.clear_session()
@@ -739,13 +758,6 @@ def api_clear_all():
     return jsonify({"status": "cleared", "turns_count": 0, "users_count": 0})
 
 
-from audio_utils import clean_audio_for_speaker_id, decode_pcm_base64
-
-
-def _decode_pcm_base64(b64_str):
-    return decode_pcm_base64(b64_str)
-
-
 def _rebuild_all_centroids():
     canonical_names = {k.lower().strip(): k for k in speaker_id_engine._profiles.keys()}
     grouped = {}
@@ -783,7 +795,9 @@ def _rebuild_all_centroids():
 
 def _update_single_user_centroid(speaker_name):
     """Incrementally update only one user's centroid instead of rebuilding all."""
-    name = (speaker_name or "").strip()
+    canonical_names = {k.lower().strip(): k for k in speaker_id_engine._profiles.keys()}
+    canon_name = canonical_names.get((speaker_name or "").lower().strip(), speaker_name)
+    name = (canon_name or "").strip()
     if not name:
         return
 
@@ -821,7 +835,7 @@ def _update_cluster_map_from_turns():
             continue
         if entry.get("tagged_as"):
             _session_cluster_map[lbl] = entry["tagged_as"]
-        elif entry.get("predicted_speaker") and entry.get("predicted_confidence", 0.0) >= 35.0:
+        elif entry.get("predicted_speaker") and entry.get("predicted_confidence", 0.0) >= CONF_TENTATIVE:
             _session_cluster_map[lbl] = entry["predicted_speaker"]
 
 
@@ -834,19 +848,7 @@ def _recalculate_turn_predictions():
         lbl = entry.get("speaker_label")
         if emb is not None:
             id_res = speaker_id_engine.identify_embedding(emb)
-            scores = id_res.get("scores", {})
-            predicted_speaker = id_res.get("top_match") or id_res.get("winner")
-            predicted_confidence = id_res.get("confidence_pct", 0.0)
-
-            # If no active profiles with centroids exist or top confidence is minimal with no winner
-            if not scores or (not id_res.get("winner") and predicted_confidence <= 10.0 and not scores):
-                # Fallback to AssemblyAI cluster inheritance if known
-                if lbl and lbl in _session_cluster_map:
-                    predicted_speaker = _session_cluster_map[lbl]
-                    predicted_confidence = 30.0
-                else:
-                    predicted_speaker = None
-                    predicted_confidence = 0.0
+            predicted_speaker, predicted_confidence, _is_winner, scores = _resolve_prediction(id_res, lbl)
 
             entry["predicted_speaker"] = predicted_speaker
             entry["predicted_confidence"] = predicted_confidence
@@ -854,7 +856,10 @@ def _recalculate_turn_predictions():
         else:
             if lbl and lbl in _session_cluster_map:
                 entry["predicted_speaker"] = _session_cluster_map[lbl]
-                entry["predicted_confidence"] = 30.0
+                # No audio for this specific turn was scored, so there's no real
+                # per-turn number to show -- 0% is honest ("inherited, unmeasured"),
+                # not a guess dressed up as a percentage.
+                entry["predicted_confidence"] = 0.0
             else:
                 entry["predicted_speaker"] = None
                 entry["predicted_confidence"] = 0.0
@@ -868,6 +873,39 @@ def _recalculate_turn_predictions():
         ))
 
     db.batch_update_turn_predictions(batch_updates)
+
+
+def init_app_state():
+    """Load profiles, turns, centroids, and session cluster mappings from SQLite on startup."""
+    speaker_id_engine.init_profiles_from_db()
+    db_turns = db.get_all_turns()
+    for t in db_turns:
+        to = t["turn_order"]
+        emb = None
+        if t.get("embedding_json"):
+            try:
+                emb = torch.tensor(json.loads(t["embedding_json"]), dtype=torch.float32)
+            except Exception:
+                pass
+
+        turn_store[to] = {
+            "audio_b64": None,
+            "embedding": emb,
+            "text": t.get("text", ""),
+            "speaker_label": t.get("speaker_label", "A"),
+            "predicted_speaker": t.get("predicted_speaker"),
+            "predicted_confidence": t.get("predicted_confidence", 0.0),
+            "scores": {},
+            "tagged_as": t.get("tagged_as"),
+            "is_mixed": bool(t.get("is_mixed", 0)),
+        }
+    _rebuild_all_centroids()
+    _update_cluster_map_from_turns()
+    _recalculate_turn_predictions()
+    log.info("Initialized app with %d turns and recovered session cluster mapping: %s", len(turn_store), _session_cluster_map)
+
+
+init_app_state()
 
 
 from concurrent.futures import ThreadPoolExecutor
@@ -885,21 +923,17 @@ def _process_turn_embedding_async(turn_order, audio_b64):
         duration_s = len(pcm) / 16000.0
         emb = speaker_id_engine.extract_embedding(pcm)
         id_res = speaker_id_engine.identify_embedding(emb)
-        scores = id_res.get("scores", {})
-        predicted_speaker = id_res.get("top_match") or id_res.get("winner")
-        predicted_confidence = id_res.get("confidence_pct", 0.0)
 
         entry = turn_store.get(turn_order)
         lbl = entry.get("speaker_label") if entry else None
 
-        # If neural confidence is high on longer utterance, lock in session cluster mapping
-        if predicted_speaker and predicted_confidence >= 35.0 and lbl:
-            _session_cluster_map[lbl] = predicted_speaker
+        predicted_speaker, predicted_confidence, is_winner, scores = _resolve_prediction(id_res, lbl)
 
-        # If neural confidence is low on short interjection (<1.5s), inherit session cluster speaker
-        if (not predicted_speaker or predicted_confidence < 15.0) and lbl and lbl in _session_cluster_map:
-            predicted_speaker = _session_cluster_map[lbl]
-            predicted_confidence = 30.0
+        # Lock in session cluster mapping only for genuinely confident matches --
+        # a weak/inherited guess should never overwrite what the cluster map
+        # already knows for this raw label.
+        if predicted_speaker and (is_winner or predicted_confidence >= CONF_CONFIRMED) and lbl:
+            _session_cluster_map[lbl] = predicted_speaker
 
         # Persist the computed embedding so it doesn't need re-extraction on restart
         embedding_json = json.dumps(emb.tolist())
@@ -913,10 +947,11 @@ def _process_turn_embedding_async(turn_order, audio_b64):
             entry["predicted_confidence"] = predicted_confidence
             entry["scores"] = scores
 
-            # Auto-tag and combine into centroid if high-confidence (>= 70%) AND audio length >= 1.0s
+            # Auto-tag and combine into centroid if the engine flagged a genuine winner OR the
+            # real confidence crosses CONF_CONFIRMED -- AND audio length >= 1.0s
             if (
                 predicted_speaker
-                and predicted_confidence >= 70.0
+                and (is_winner or predicted_confidence >= CONF_CONFIRMED)
                 and duration_s >= 1.0
                 and not entry.get("tagged_as")
             ):
@@ -1002,6 +1037,11 @@ def api_turns():
     for t in turns:
         to = t["turn_order"]
         entry = turn_store.get(to, {})
+        resolved_name, resolved_tier = resolve_speaker_display({
+            "tagged_as": t["tagged_as"],
+            "predicted_speaker": t["predicted_speaker"],
+            "predicted_confidence": t.get("predicted_confidence", 0.0),
+        })
         result.append({
             "turn_order": to,
             "text": t["text"],
@@ -1009,6 +1049,8 @@ def api_turns():
             "tagged_as": t["tagged_as"],
             "predicted_speaker": t["predicted_speaker"],
             "predicted_confidence": t.get("predicted_confidence", 0.0),
+            "resolved_speaker_name": resolved_name,
+            "resolved_tier": resolved_tier,
             "scores": entry.get("scores", {}),
             "is_mixed": bool(t.get("is_mixed", 0)),
             "has_audio": bool(t.get("has_audio")),
@@ -1198,4 +1240,4 @@ def api_set_turn_mixed():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True, use_reloader=False)

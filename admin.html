@@ -128,6 +128,17 @@
       border-color: #fca5a5;
     }
 
+    .btn-warning {
+      color: #854d0e;
+      background: #fefce8;
+      border-color: #fde047;
+      font-weight: 600;
+    }
+    .btn-warning:hover {
+      background: #fef08a;
+      border-color: #eab308;
+    }
+
     .btn-transcribe-toggle {
       display: inline-flex;
       align-items: center;
@@ -512,6 +523,10 @@
     .turn-badge.detected {
       background: #e0e7ff;
       color: var(--accent);
+    }
+    .turn-badge.weak {
+      background: #fef3c7;
+      color: #92400e;
     }
 
     .turn-text {
@@ -958,6 +973,18 @@
       margin-right: 6px;
       white-space: nowrap;
     }
+    .profile-card.active-assign-mode {
+      border-color: #4f46e5 !important;
+      background: #eef2ff !important;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.35) !important;
+      transform: translateY(-2px);
+    }
+    .profile-card.active-assign-mode .profile-card-assign-hint {
+      display: inline-flex !important;
+      background: #4f46e5 !important;
+      color: #ffffff !important;
+    }
+
     .is-selection-mode .profiles-list .profile-card:hover .profile-card-assign-hint {
       display: inline-flex;
       align-items: center;
@@ -1596,6 +1623,7 @@
           <span id="transcribeIcon">⏹️</span>
           <span id="transcribeText">Stop Transcribing</span>
         </button>
+        <button class="btn btn-warning" id="btnResetVoiceModel" title="Reset all learned voice model centroids while keeping all user profiles and turn transcripts">Reset Voice Model</button>
         <button class="btn btn-danger" id="btnClearTurns">Clear Turns</button>
         <button class="btn btn-danger" id="btnClearAll">Reset Everything</button>
       </div>
@@ -1827,7 +1855,8 @@
           if (cleanSpeaker) {
             if (turnObj) {
               const tagged = (turnObj.tagged_as || '').toLowerCase();
-              const pred = (turnObj.predicted_speaker || '').toLowerCase();
+              const turnConf = turnObj.predicted_confidence || 0;
+              const pred = (turnConf >= 30.0 ? (turnObj.predicted_speaker || '') : '').toLowerCase();
               matchesSpeaker = (tagged === cleanSpeaker || (!tagged && pred === cleanSpeaker));
             } else {
               matchesSpeaker = false;
@@ -2215,20 +2244,22 @@
                 <button class="btn-del-profile" title="Delete Profile">✕</button>
               `;
 
+              // Bind card click (Single click selects for quick assign, or applies batch if checkboxes selected)
+              card.addEventListener('click', (e) => {
+                if (e.target.closest('.btn-del-profile') || e.target.closest('.btn-voice-enroll') || e.target.closest('.profile-avatar')) return;
+                if (selectedTurnOrders.size > 0) {
+                  applyBatchAssign(u.name);
+                } else {
+                  setQuickAssignProfile(u.name);
+                }
+              });
+
               // Bind double-click to toggle Quick Assign Mode
               card.addEventListener('dblclick', (e) => {
                 if (e.target.closest('.btn-del-profile') || e.target.closest('.btn-voice-enroll') || e.target.closest('.profile-avatar')) return;
                 e.preventDefault();
                 if (window.getSelection) window.getSelection().removeAllRanges();
                 setQuickAssignProfile(u.name);
-              });
-
-              // Bind card click to batch assign if cards are selected
-              card.addEventListener('click', (e) => {
-                if (e.target.closest('.btn-del-profile') || e.target.closest('.btn-voice-enroll') || e.target.closest('.profile-avatar')) return;
-                if (selectedTurnOrders.size > 0) {
-                  applyBatchAssign(u.name);
-                }
               });
 
               // Bind upload avatar click
@@ -2413,7 +2444,9 @@
           // Calculate turn counts for each speaker in current meeting
           const speakerCounts = {};
           currentTurnsList.forEach(t => {
-            const spk = (t.tagged_as || t.predicted_speaker || '').trim().toLowerCase();
+            const tConf = t.predicted_confidence || 0;
+            const gatedPred = (t.predicted_speaker && tConf >= 30.0) ? t.predicted_speaker : '';
+            const spk = (t.resolved_speaker_name || t.tagged_as || gatedPred || '').trim().toLowerCase();
             if (spk) speakerCounts[spk] = (speakerCounts[spk] || 0) + 1;
           });
 
@@ -3025,7 +3058,12 @@
         // Group turns into speaker buckets and track the most recent turn order for each speaker
         const speakerMap = new Map();
         turns.forEach(t => {
-          const spk = (t.tagged_as || t.predicted_speaker || `Speaker ${t.speaker_label || '?'}`).trim();
+          // Gate on the same tier the server resolves (>=30% confidence), matching the middle
+          // column and the live index.html view. Below that, group under "Speaker X" until the
+          // backend is confident enough to assign it for real.
+          const spkConf = t.predicted_confidence || 0;
+          const gatedPrediction = (t.predicted_speaker && spkConf >= 30.0) ? t.predicted_speaker : null;
+          const spk = (t.resolved_speaker_name || t.tagged_as || gatedPrediction || `Speaker ${t.speaker_label || '?'}`).trim();
           if (!speakerMap.has(spk)) {
             speakerMap.set(spk, { turns: [], latestTurnOrder: 0 });
           }
@@ -3396,10 +3434,32 @@
             const isTagged = !!t.tagged_as;
             const isMixed = !!t.is_mixed;
             const isSelected = selectedTurnOrders.has(t.turn_order);
-            const currentAssignment = t.tagged_as || t.predicted_speaker || '';
+            const conf = t.predicted_confidence || 0;
+            const confDisplay = Math.round(conf * 10) / 10;
+            // Server is the single source of truth for the tier (see resolve_speaker_display in
+            // app.py: >=70% confirmed/green, 30-70% tentative/blue, <30% weak/gray-amber, none = unassigned).
+            // Unlike before, a weak guess is still SHOWN with its real percentage — it's just not
+            // pre-filled into the combobox and not used for speaker-box grouping elsewhere.
+            const tier = t.resolved_tier || (isTagged ? 'confirmed' : (t.predicted_speaker ? (conf >= 70.0 ? 'confirmed' : conf >= 30.0 ? 'tentative' : 'weak') : 'unassigned'));
+            const currentAssignment = t.tagged_as || ((tier === 'tentative' || tier === 'confirmed') ? t.predicted_speaker : '');
 
-            let badgeClass = isTagged ? 'tagged' : (t.predicted_speaker ? 'detected' : '');
-            let badgeText = isTagged ? `✓ Tagged: ${t.tagged_as}` : (t.predicted_speaker ? `🎯 Auto: ${t.predicted_speaker} (${t.predicted_confidence}%)` : '');
+            let badgeClass = '';
+            let badgeText = '';
+            if (isTagged) {
+              badgeClass = 'tagged';
+              badgeText = `✓ Tagged: ${t.tagged_as}`;
+            } else if (t.predicted_speaker) {
+              if (tier === 'confirmed') {
+                badgeClass = 'tagged';
+                badgeText = `✓ Auto: ${t.predicted_speaker} (${confDisplay}%)`;
+              } else if (tier === 'tentative') {
+                badgeClass = 'detected';
+                badgeText = `🎯 Auto: ${t.predicted_speaker} (${confDisplay}%)`;
+              } else {
+                badgeClass = 'weak';
+                badgeText = `❔ Guess: ${t.predicted_speaker} (${confDisplay}%)`;
+              }
+            }
             const mixedBadgeHtml = isMixed ? `<span class="turn-badge mixed" title="Excluded from voiceprint centroids">⚠️ Mixed</span>` : '';
 
             if (!card) {
@@ -3693,6 +3753,18 @@
       });
 
       // ── Clear Actions ─────────────────────────────────────────────────────
+      const btnResetVoiceModel = document.getElementById('btnResetVoiceModel');
+      if (btnResetVoiceModel) {
+        btnResetVoiceModel.addEventListener('click', async () => {
+          if (!confirm('Reset all learned voice model centroids? All user profiles, names, avatars, and transcript turns will be kept intact.')) return;
+          try {
+            await fetch('/api/reset-voice-model', { method: 'POST' });
+            await pollUsers();
+            await pollTurns();
+          } catch (e) {}
+        });
+      }
+
       btnClearTurns.addEventListener('click', async () => {
         if (!confirm('Clear all meeting turns?')) return;
         try {

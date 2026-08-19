@@ -44,7 +44,6 @@ def init_db():
                 predicted_speaker TEXT,
                 predicted_confidence REAL DEFAULT 0.0,
                 is_mixed INTEGER DEFAULT 0,
-                audio_b64 TEXT,
                 embedding_json TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -65,25 +64,18 @@ def init_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
-        # Migration: add embedding_json column to existing databases
+        # Non-destructive migrations for existing databases
         try:
             conn.execute("ALTER TABLE turns ADD COLUMN embedding_json TEXT")
         except sqlite3.OperationalError:
-            pass  # Column already exists
-        # Migration: add is_mixed column to existing databases
+            pass
         try:
             conn.execute("ALTER TABLE turns ADD COLUMN is_mixed INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
-            pass  # Column already exists
-        # Migration: add company name to existing profiles
+            pass
         try:
             conn.execute("ALTER TABLE profiles ADD COLUMN company_name TEXT")
         except sqlite3.OperationalError:
-            pass  # Column already exists
-        # Clear out any legacy audio data so database is audio-free
-        try:
-            conn.execute("UPDATE turns SET audio_blob = NULL, audio_b64 = NULL WHERE audio_blob IS NOT NULL OR audio_b64 IS NOT NULL;")
-        except Exception:
             pass
         conn.commit()
     log.info("SQLite database initialized at %s (audio storage disabled)", DB_PATH)
@@ -103,18 +95,14 @@ def upsert_turn(
     embedding_json: Optional[str] = None,
     is_mixed: Optional[int] = None,
 ):
-    # Audio saving disabled per privacy & storage requirements
-    audio_blob = None
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT INTO turns (turn_order, text, speaker_label, audio_blob, tagged_as, predicted_speaker, predicted_confidence, embedding_json, is_mixed)
-            VALUES (?, ?, ?, NULL, ?, ?, ?, ?, COALESCE(?, 0))
+            INSERT INTO turns (turn_order, text, speaker_label, tagged_as, predicted_speaker, predicted_confidence, embedding_json, is_mixed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, 0))
             ON CONFLICT(turn_order) DO UPDATE SET
                 text = excluded.text,
                 speaker_label = excluded.speaker_label,
-                audio_blob = NULL,
-                audio_b64 = NULL,
                 tagged_as = COALESCE(excluded.tagged_as, turns.tagged_as),
                 predicted_speaker = COALESCE(excluded.predicted_speaker, turns.predicted_speaker),
                 predicted_confidence = CASE WHEN excluded.predicted_confidence > 0 THEN excluded.predicted_confidence ELSE turns.predicted_confidence END,
@@ -145,28 +133,20 @@ def update_turn_mixed(turn_order: int, is_mixed: int):
 
 
 def get_all_turns() -> List[dict]:
-    """Full turn data including audio and embeddings (used at startup)."""
+    """Full turn data including embeddings (used at startup)."""
     with get_conn() as conn:
         cur = conn.execute("SELECT * FROM turns ORDER BY turn_order DESC")
         rows = cur.fetchall()
-        result = []
-        for r in rows:
-            d = dict(r)
-            # Convert BLOB back to base64 for in-memory compatibility
-            if d.get("audio_blob"):
-                d["audio_b64"] = base64.b64encode(d["audio_blob"]).decode("ascii")
-            d.pop("audio_blob", None)
-            result.append(d)
-        return result
+        return [dict(r) for r in rows]
 
 
 def get_all_turns_lite() -> List[dict]:
-    """Lightweight turn listing without heavy audio/embedding blobs."""
+    """Lightweight turn listing without heavy embedding blobs."""
     with get_conn() as conn:
         cur = conn.execute(
             "SELECT turn_order, text, speaker_label, tagged_as, "
             "predicted_speaker, predicted_confidence, is_mixed, created_at, "
-            "(audio_blob IS NOT NULL OR audio_b64 IS NOT NULL) AS has_audio "
+            "0 AS has_audio "
             "FROM turns ORDER BY turn_order DESC"
         )
         rows = cur.fetchall()
@@ -177,13 +157,7 @@ def get_turn(turn_order: int) -> Optional[dict]:
     with get_conn() as conn:
         cur = conn.execute("SELECT * FROM turns WHERE turn_order = ?", (turn_order,))
         row = cur.fetchone()
-        if not row:
-            return None
-        d = dict(row)
-        if d.get("audio_blob"):
-            d["audio_b64"] = base64.b64encode(d["audio_blob"]).decode("ascii")
-        d.pop("audio_blob", None)
-        return d
+        return dict(row) if row else None
 
 
 def update_turn_tag(turn_order: int, tagged_as: Optional[str]):
@@ -248,6 +222,13 @@ def delete_turn(turn_order: int):
     """Delete a single turn from the database."""
     with get_conn() as conn:
         conn.execute("DELETE FROM turns WHERE turn_order = ?", (turn_order,))
+        conn.commit()
+
+
+def clear_all_turn_tags():
+    """Clear all speaker tags and predictions from turns in SQLite while keeping transcript text intact."""
+    with get_conn() as conn:
+        conn.execute("UPDATE turns SET tagged_as = NULL, predicted_speaker = NULL, predicted_confidence = 0.0")
         conn.commit()
 
 
