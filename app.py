@@ -197,23 +197,27 @@ def api_streaming_token():
 GEMINI_MODEL = "gemini-3.6-flash"
 
 
-def call_gemini(prompt, response_json=False, timeout=90):
-    """Executes prompt strictly on gemini-3.6-flash with thinking model support and no fallback."""
+def call_gemini(prompt, response_json=False, timeout=150):
+    """Executes prompt on gemini-3.6-flash.
+    Primary: Thinking mode with up to 150s timeout for deep reasoning.
+    Fallback: Immediate non-thinking fast mode if thinking model times out or errors."""
     key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or GEMINI_API_KEY
     if not key:
         return None
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-    gen_config = {}
-    if response_json:
-        gen_config["response_mime_type"] = "application/json"
-    gen_config["thinkingConfig"] = {"thinkingBudget": 1024}
 
-    body = {
+    # 1. Primary Attempt: Thinking Model with 150s Timeout
+    gen_config_thinking = {}
+    if response_json:
+        gen_config_thinking["response_mime_type"] = "application/json"
+    gen_config_thinking["thinkingConfig"] = {"thinkingBudget": 2048}
+
+    body_thinking = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": gen_config
+        "generationConfig": gen_config_thinking
     }
     try:
-        resp = requests.post(url, params={"key": key}, json=body, timeout=timeout)
+        resp = requests.post(url, params={"key": key}, json=body_thinking, timeout=timeout)
         if resp.status_code == 200:
             data = resp.json()
             candidates = data.get("candidates", [])
@@ -225,9 +229,36 @@ def call_gemini(prompt, response_json=False, timeout=90):
                 if parts and "text" in parts[0]:
                     return parts[0]["text"]
         else:
-            log.warning("Gemini %s returned %d: %s", GEMINI_MODEL, resp.status_code, resp.text[:160])
+            log.warning("Thinking Gemini returned %d: %s (attempting fast non-thinking fallback)", resp.status_code, resp.text[:120])
     except Exception as e:
-        log.warning("Gemini %s request failed: %s", GEMINI_MODEL, e)
+        log.warning("Thinking Gemini request failed/timed out: %s (attempting fast non-thinking fallback)", e)
+
+    # 2. Resilient Fallback: Fast Non-Thinking Mode (under 2s)
+    gen_config_fast = {}
+    if response_json:
+        gen_config_fast["response_mime_type"] = "application/json"
+
+    body_fast = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": gen_config_fast
+    }
+    try:
+        resp = requests.post(url, params={"key": key}, json=body_fast, timeout=30)
+        if resp.status_code == 200:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                for part in parts:
+                    if "text" in part and not part.get("thought", False):
+                        return part["text"]
+                if parts and "text" in parts[0]:
+                    return parts[0]["text"]
+        else:
+            log.warning("Fast Gemini returned %d: %s", resp.status_code, resp.text[:120])
+    except Exception as e:
+        log.warning("Fast Gemini request failed: %s", e)
+
     return None
 
 
